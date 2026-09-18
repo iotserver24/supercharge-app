@@ -6,7 +6,15 @@ Modelled on [Paseo](https://github.com/getpaseo/paseo)’s daemon + clients: one
 
 ## What you get
 
-Paseo-style: **clients never launch the CLI**. They talk to this daemon; the daemon launches `supercharge agent --always-approve stdio`.
+Paseo-style: **clients never launch the CLI**. They talk to this daemon; the daemon launches Supercharge CLI.
+
+Preferred command (CLI 1.3.16+):
+
+```bash
+supercharge agent daemon --bind 0.0.0.0:6767 --secret "$SUPERCHARGE_PASSWORD"
+```
+
+Docker uses that when the CLI supports `daemon`, otherwise `server/daemon.mjs`.
 
 - **Daemon:** Node process on `:6767` (password-gated HTTP + SSE)
 - **Web:** `http://HOST:6767`

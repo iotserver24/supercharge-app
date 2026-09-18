@@ -251,8 +251,39 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://local");
   const p = url.pathname;
 
-  if (p === "/health" || p === "/v1/health") {
+  if (p === "/health" || p === "/healthz" || p === "/v1/health") {
     json(res, 200, { ok: true, busy, agent: Boolean(child) });
+    return;
+  }
+  if (req.method === "POST" && (p === "/v1/chat" || p === "/api/v1/chat")) {
+    if (!authOk(req, null) && PASSWORD) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
+    const body = await readBody(req);
+    handlePrompt(body.text || body.prompt || "").catch((e) => console.error(e));
+    json(res, 200, { ok: true });
+    return;
+  }
+  if (req.method === "GET" && (p === "/v1/chat/events" || p === "/api/v1/stream")) {
+    if (!authOk(req, null) && PASSWORD) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
+    res.writeHead(200, {
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache",
+      connection: "keep-alive",
+      "access-control-allow-origin": "*",
+    });
+    for (const ev of events) res.write(`data: ${JSON.stringify(ev)}\n\n`);
+    sseClients.add(res);
+    req.on("close", () => sseClients.delete(res));
+    return;
+  }
+  if (req.method === "POST" && p === "/v1/chat/stop") {
+    if (child) child.kill("SIGINT");
+    json(res, 200, { ok: true });
     return;
   }
 
