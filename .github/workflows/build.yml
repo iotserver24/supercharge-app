@@ -172,15 +172,11 @@ jobs:
 
       - name: Build Supercharge App
         uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: .
-          tagName: ${{ github.event.inputs.publish_release == 'true' && needs.version.outputs.tag || '' }}
-          releaseName: Supercharge App ${{ needs.version.outputs.tag }}
-          releaseBody: Supercharge App ${{ needs.version.outputs.tag }} installers for macOS, Windows, and Linux (x64 and ARM64).
-          releaseDraft: false
-          prerelease: false
+          # Do not create the GitHub Release here. tauri-action fails the whole
+          # job with "Resource not accessible by integration" even after a
+          # successful bundle if GITHUB_TOKEN cannot write releases.
           includeUpdaterJson: false
           args: --target ${{ matrix.rust_target }} --bundles ${{ matrix.bundles }}
 
@@ -193,3 +189,40 @@ jobs:
             src-tauri/target/release/bundle/**
           if-no-files-found: warn
           retention-days: 14
+
+  publish:
+    needs: [version, build]
+    if: ${{ always() && github.event.inputs.publish_release == 'true' && needs.version.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: supercharge-app-${{ needs.version.outputs.version }}-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find dist -type f \( \
+            -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' \
+            -o -name '*.exe' -o -name '*.msi' \
+          \) | sort)
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "::error::No installers were uploaded. All platform jobs failed before bundling."
+            exit 1
+          fi
+          notes="Supercharge App ${TAG} installers."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${files[@]}" --clobber
+          else
+            gh release create "$TAG" "${files[@]}" --title "Supercharge App ${TAG}" --notes "$notes"
+          fi
+          echo "published ${#files[@]} files on $TAG"
