@@ -71,7 +71,9 @@ jobs:
             rust_target: x86_64-pc-windows-msvc
             name: Windows-x64
             bundles: nsis
-          - os: windows-11-arm
+          # Cross-compile ARM64 on the x64 runner. Native windows-11-arm has no
+          # canvas prebuild (cairo/GTK), so pnpm install dies in node-gyp.
+          - os: windows-latest
             rust_target: aarch64-pc-windows-msvc
             name: Windows-ARM64
             bundles: nsis
