@@ -5,7 +5,7 @@
 #
 # Usage:
 #   bash scripts/assert-release-assets.sh v0.2.33
-#   bash scripts/assert-release-assets.sh v0.2.33 --repo RongleCat/grok-app
+#   bash scripts/assert-release-assets.sh v0.2.33 --repo iotserver24/supercharge-app
 set -euo pipefail
 
 TAG="${1:-}"
@@ -43,10 +43,15 @@ if ! command -v gh >/dev/null 2>&1; then
 fi
 
 # Portable across macOS bash 3.2 (no mapfile) and Ubuntu CI.
-ASSETS_RAW="$(
-  gh release view "$TAG" --repo "$REPO" --json assets \
-    --jq '.assets[].name' 2>/dev/null | sort -u
-)"
+ASSETS_RAW=""
+for _try in 1 2 3 4 5 6; do
+  ASSETS_RAW="$(
+    gh release view "$TAG" --repo "$REPO" --json assets \
+      --jq '.assets[].name' 2>/dev/null | sort -u
+  )"
+  [[ -n "$ASSETS_RAW" ]] && break
+  sleep 10
+done
 ASSETS=()
 while IFS= read -r line || [[ -n "$line" ]]; do
   [[ -z "$line" ]] && continue
@@ -70,15 +75,15 @@ has() {
   return 1
 }
 
-# Patterns match versioned Tauri / portable names (see docs/llm-wiki/release.md).
+# Patterns match Supercharge Tauri / portable names.
 REQUIRED=(
-  "Grok_${VER}_aarch64.dmg"
-  "Grok_${VER}_x64.dmg"
-  "Grok_${VER}_x64-setup.exe"
-  "Grok_${VER}_x64-portable.zip"
-  "Grok_${VER}_amd64.AppImage"
-  "Grok_${VER}_amd64.deb"
-  "Grok-${VER}-1.x86_64.rpm|Grok-${VER}.x86_64.rpm|Grok_${VER}_x86_64.rpm|Grok_${VER}_amd64.rpm"
+  "Supercharge_${VER}_aarch64.dmg"
+  "Supercharge_${VER}_x64.dmg"
+  "Supercharge_${VER}_x64-setup.exe"
+  "Supercharge_${VER}_x64-portable.zip|Grok_${VER}_x64-portable.zip"
+  "Supercharge_${VER}_amd64.AppImage"
+  "Supercharge_${VER}_amd64.deb"
+  "Supercharge-${VER}-1.x86_64.rpm|Supercharge-${VER}.x86_64.rpm|Supercharge_${VER}_x86_64.rpm|Supercharge_${VER}_amd64.rpm"
 )
 
 missing=()

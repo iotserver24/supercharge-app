@@ -347,7 +347,7 @@ jobs:
             echo "::error::missing signature for $SRC_TAR"
             exit 1
           fi
-          OUT_TAR="Grok_${VER}_${ARCH}.app.tar.gz"
+          OUT_TAR="Supercharge_${VER}_${ARCH}.app.tar.gz"
           OUT_SIG="${OUT_TAR}.sig"
           cp "$SRC_TAR" "$OUT_TAR"
           cp "$SRC_SIG" "$OUT_SIG"
