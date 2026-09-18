@@ -31,18 +31,27 @@ jobs:
     steps:
       - id: norm
         shell: bash
+        env:
+          RAW: ${{ github.event.inputs.version }}
         run: |
           set -euo pipefail
-          raw="${{ github.event.inputs.version }}"
-          raw="${raw#"${raw%%[![:space:]]*}"}"
-          raw="${raw%"${raw##*[![:space:]]}"}"
-          ver="${raw#v}"
-          if [[ ! "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-            echo "::error::Version must look like 0.2.37 (got: $raw)"
-            exit 1
-          fi
-          echo "version=$ver" >> "$GITHUB_OUTPUT"
-          echo "tag=v$ver" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY'
+          import os, re, sys
+          raw = os.environ.get("RAW", "").strip()
+          ver = raw[1:] if raw.lower().startswith("v") else raw
+          # Windows-style 0.0.0.1 is not Tauri/Cargo semver and '+' is not a
+          # valid git tag character — map to 0.0.0-1.
+          m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)\.(\d+)", ver)
+          if m:
+              ver = f"{m.group(1)}.{m.group(2)}.{m.group(3)}-{m.group(4)}"
+          if not re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?", ver):
+              print(f"::error::Version must be semver like 0.2.37 (got: {raw!r})", file=sys.stderr)
+              sys.exit(1)
+          print(f"using version {ver}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"version={ver}\n")
+              fh.write(f"tag=v{ver}\n")
+          PY
 
   build:
     needs: version
@@ -131,7 +140,12 @@ jobs:
           conf.write_text(json.dumps(cfg, indent=2) + "\n")
           cargo = Path("src-tauri/Cargo.toml")
           text = cargo.read_text()
-          text, n = re.subn(r'(?m)^version = "[^"]+"', f'version = "{ver}"', text, count=1)
+          text, n = re.subn(
+              r'(?m)^version = "[^"]+"',
+              f'version = "{ver}"',
+              text,
+              count=1,
+          )
           if n != 1:
               raise SystemExit("could not patch src-tauri/Cargo.toml version")
           cargo.write_text(text)
