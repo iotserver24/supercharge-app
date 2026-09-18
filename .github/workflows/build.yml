@@ -111,7 +111,11 @@ jobs:
             libayatana-appindicator3-dev \
             libssl-dev \
             rpm \
-            file
+            file \
+            xdg-utils \
+            desktop-file-utils \
+            fuse \
+            libfuse2
 
       - uses: dtolnay/rust-toolchain@stable
         with:
