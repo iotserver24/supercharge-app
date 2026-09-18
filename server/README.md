@@ -6,9 +6,11 @@ Modelled on [Paseo](https://github.com/getpaseo/paseo)’s daemon + clients: one
 
 ## What you get
 
-- **Daemon:** `supercharge agent serve` (ACP over WebSocket, password-gated)
-- **Web / phone:** `http://HOST:6767` — log in with the same password
-- **Local CLI:** `supercharge --remote ws://HOST:6767/ws --secret PASS`
+Paseo-style: **clients never launch the CLI**. They talk to this daemon; the daemon launches `supercharge agent --always-approve stdio`.
+
+- **Daemon:** Node process on `:6767` (password-gated HTTP + SSE)
+- **Web:** `http://HOST:6767`
+- **Phone:** cloud-infra Flutter app → login → **Supercharge server** → host + password
 - **Workspace:** bind-mount a folder at `/workspace`
 
 ## Docker Compose
