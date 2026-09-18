@@ -45,6 +45,10 @@ Windows PowerShell:
 irm https://raw.githubusercontent.com/iotserver24/supercharge-releases/main/scripts/install.ps1 | iex
 ```
 
+## GitHub installers
+
+Actions → **Build installers** → **Run workflow**. Enter a version (`0.2.37`). That builds Supercharge App for macOS (ARM + Intel), Windows (x64 + ARM64), and Linux (x64 + ARM64). With **publish_release** on, the installers go on a GitHub Release for that version.
+
 ## Development
 
 ```bash

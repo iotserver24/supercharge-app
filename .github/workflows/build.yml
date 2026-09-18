@@ -1,0 +1,175 @@
+# Manual desktop builds for every OS / architecture.
+# Actions → Build installers → Run workflow → type the version (e.g. 0.2.37).
+name: Build installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to stamp on the installers (e.g. 0.2.37 or v0.2.37)"
+        required: true
+        type: string
+      publish_release:
+        description: "Upload installers to a GitHub Release for this version"
+        required: true
+        type: boolean
+        default: true
+
+concurrency:
+  group: build-${{ github.event.inputs.version }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.norm.outputs.version }}
+      tag: ${{ steps.norm.outputs.tag }}
+    steps:
+      - id: norm
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw="${{ github.event.inputs.version }}"
+          raw="${raw#"${raw%%[![:space:]]*}"}"
+          raw="${raw%"${raw##*[![:space:]]}"}"
+          ver="${raw#v}"
+          if [[ ! "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version must look like 0.2.37 (got: $raw)"
+            exit 1
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "tag=v$ver" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            rust_target: aarch64-apple-darwin
+            name: macOS-ARM64
+            bundles: dmg
+          - os: macos-latest
+            rust_target: x86_64-apple-darwin
+            name: macOS-x64
+            bundles: dmg
+          - os: windows-latest
+            rust_target: x86_64-pc-windows-msvc
+            name: Windows-x64
+            bundles: nsis
+          - os: windows-11-arm
+            rust_target: aarch64-pc-windows-msvc
+            name: Windows-ARM64
+            bundles: nsis
+          - os: ubuntu-22.04
+            rust_target: x86_64-unknown-linux-gnu
+            name: Linux-x64
+            bundles: appimage,deb,rpm
+          - os: ubuntu-24.04-arm
+            rust_target: aarch64-unknown-linux-gnu
+            name: Linux-ARM64
+            bundles: appimage,deb,rpm
+
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Linux system deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            libssl-dev \
+            rpm \
+            file
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          shared-key: build-${{ matrix.name }}
+
+      - name: Stamp version ${{ needs.version.outputs.version }}
+        shell: bash
+        env:
+          VER: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          ver = os.environ["VER"]
+          pkg = Path("package.json")
+          data = json.loads(pkg.read_text())
+          data["version"] = ver
+          pkg.write_text(json.dumps(data, indent=2) + "\n")
+          conf = Path("src-tauri/tauri.conf.json")
+          cfg = json.loads(conf.read_text())
+          cfg["version"] = ver
+          conf.write_text(json.dumps(cfg, indent=2) + "\n")
+          cargo = Path("src-tauri/Cargo.toml")
+          text = cargo.read_text()
+          text, n = re.subn(r'(?m)^version = "[^"]+"', f'version = "{ver}"', text, count=1)
+          if n != 1:
+              raise SystemExit("could not patch src-tauri/Cargo.toml version")
+          cargo.write_text(text)
+          lock = Path("src-tauri/Cargo.lock")
+          if lock.is_file():
+              blob = lock.read_text()
+              blob = re.sub(
+                  r'(name = "supercharge-app"\n)version = "[^"]+"',
+                  rf'\1version = "{ver}"',
+                  blob,
+                  count=1,
+              )
+              lock.write_text(blob)
+          print(f"stamped {ver}")
+          PY
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build Supercharge App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: .
+          tagName: ${{ github.event.inputs.publish_release == 'true' && needs.version.outputs.tag || '' }}
+          releaseName: Supercharge App ${{ needs.version.outputs.tag }}
+          releaseBody: Supercharge App ${{ needs.version.outputs.tag }} installers for macOS, Windows, and Linux (x64 and ARM64).
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: false
+          args: --target ${{ matrix.rust_target }} --bundles ${{ matrix.bundles }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: supercharge-app-${{ needs.version.outputs.version }}-${{ matrix.name }}
+          path: |
+            src-tauri/target/${{ matrix.rust_target }}/release/bundle/**
+            src-tauri/target/release/bundle/**
+          if-no-files-found: warn
+          retention-days: 14
