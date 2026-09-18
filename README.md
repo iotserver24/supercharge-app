@@ -45,6 +45,17 @@ Windows PowerShell:
 irm https://raw.githubusercontent.com/iotserver24/supercharge-releases/main/scripts/install.ps1 | iex
 ```
 
+## Server (VPS / phone / local)
+
+Run Supercharge on a machine and chat from a phone browser or another computer. See [server/README.md](server/README.md).
+
+```bash
+cd server
+docker compose up -d --build
+```
+
+Then open `http://HOST:6767` with `SUPERCHARGE_PASSWORD`.
+
 ## GitHub installers
 
 Actions → **Build installers** → **Run workflow**. Enter a version (`0.2.37`). That builds Supercharge App for macOS (ARM + Intel), Windows (x64 + ARM64), and Linux (x64 + ARM64). With **publish_release** on, the installers go on a GitHub Release for that version.

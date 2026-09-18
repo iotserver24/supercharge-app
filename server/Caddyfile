@@ -1,0 +1,10 @@
+:6767 {
+	handle /ws* {
+		reverse_proxy 127.0.0.1:2419
+	}
+	handle {
+		root * /opt/supercharge-web
+		try_files {path} /index.html
+		file_server
+	}
+}

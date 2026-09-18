@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Supercharge</title>
+  <style>
+    :root {
+      --bg: #0e0f12;
+      --card: #181a20;
+      --text: #eceef2;
+      --muted: #8b90a0;
+      --line: #2a2d36;
+      --accent: #6ea8ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, sans-serif; }
+    #app { min-height: 100%; display: flex; flex-direction: column; }
+    header { padding: 16px 20px; border-bottom: 1px solid var(--line); font-weight: 650; }
+    main { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; max-width: 720px; width: 100%; margin: 0 auto; }
+    .log { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+    .msg { padding: 10px 12px; border-radius: 14px; max-width: 92%; white-space: pre-wrap; word-break: break-word; }
+    .user { align-self: flex-end; background: #2a3344; }
+    .agent { align-self: flex-start; background: var(--card); border: 1px solid var(--line); }
+    .sys { align-self: center; color: var(--muted); font-size: 13px; }
+    form { display: flex; gap: 8px; }
+    input, button { font: inherit; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 12px 14px; }
+    input { flex: 1; }
+    button { background: var(--accent); color: #0b1220; border: 0; font-weight: 650; }
+    .gate { margin: auto; width: min(420px, 100%); display: flex; flex-direction: column; gap: 10px; }
+    .hint { color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>Supercharge</header>
+    <main>
+      <div id="gate" class="gate">
+        <p>Enter the server password to chat from this phone or browser. Same value as <code>SUPERCHARGE_PASSWORD</code>.</p>
+        <form id="login">
+          <input id="password" type="password" autocomplete="current-password" placeholder="Password" required />
+          <button type="submit">Connect</button>
+        </form>
+        <p class="hint">Local CLI: <code>supercharge --remote ws://HOST:6767/ws --secret PASS</code></p>
+      </div>
+      <div id="chat" hidden>
+        <div id="log" class="log"></div>
+        <form id="send">
+          <input id="prompt" autocomplete="off" placeholder="Message" />
+          <button type="submit">Send</button>
+        </form>
+      </div>
+    </main>
+  </div>
+  <script>
+    const logEl = document.getElementById("log");
+    const gate = document.getElementById("gate");
+    const chat = document.getElementById("chat");
+    let ws, rpcId = 0, sessionId = null, pending = new Map();
+
+    function add(cls, text) {
+      const d = document.createElement("div");
+      d.className = "msg " + cls;
+      d.textContent = text;
+      logEl.appendChild(d);
+      logEl.scrollTop = logEl.scrollHeight;
+      return d;
+    }
+
+    function sendRpc(method, params) {
+      const id = ++rpcId;
+      const msg = { jsonrpc: "2.0", id, method, params };
+      ws.send(JSON.stringify(msg));
+      return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+    }
+
+    async function boot(secret) {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const url = proto + "://" + location.host + "/ws?server-key=" + encodeURIComponent(secret);
+      ws = new WebSocket(url);
+      ws.addEventListener("message", (ev) => {
+        let data;
+        try { data = JSON.parse(ev.data); } catch { return; }
+        if (data.id != null && pending.has(data.id)) {
+          const p = pending.get(data.id);
+          pending.delete(data.id);
+          if (data.error) p.reject(data.error);
+          else p.resolve(data.result);
+          return;
+        }
+        const u = data.params && data.params.sessionUpdate;
+        if (u === "agent_message_chunk") {
+          const t = (data.params.content && data.params.content.text) || (data.params.text) || "";
+          const last = logEl.querySelector(".agent:last-child");
+          if (last && last.dataset.stream === "1") last.textContent += t;
+          else {
+            const n = add("agent", t);
+            n.dataset.stream = "1";
+          }
+        } else if (u === "agent_thought_chunk") {
+          /* keep chat quiet */
+        } else if (data.method === "session/update" && data.params && data.params.update) {
+          const c = data.params.update;
+          if (c.sessionUpdate === "agent_message_chunk" && c.content && c.content.text) {
+            const last = logEl.querySelector(".agent:last-child");
+            if (last && last.dataset.stream === "1") last.textContent += c.content.text;
+            else {
+              const n = add("agent", c.content.text);
+              n.dataset.stream = "1";
+            }
+          }
+        }
+      });
+      await new Promise((resolve, reject) => {
+        ws.addEventListener("open", resolve, { once: true });
+        ws.addEventListener("error", () => reject(new Error("WebSocket failed")), { once: true });
+      });
+      await sendRpc("initialize", {
+        protocolVersion: 1,
+        clientInfo: { name: "supercharge-server-web", version: "0.2.36" },
+        clientCapabilities: { fs: { readTextFile: false, writeTextFile: false } },
+      });
+      const created = await sendRpc("session/new", {
+        cwd: "/workspace",
+        mcpServers: [],
+        _meta: { yoloMode: true },
+      });
+      sessionId = created.sessionId || created.session_id || (created.session && created.session.sessionId);
+      if (!sessionId) throw new Error("No session id from agent");
+      add("sys", "Connected. Working directory /workspace.");
+    }
+
+    document.getElementById("login").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const secret = document.getElementById("password").value;
+      try {
+        await boot(secret);
+        gate.hidden = true;
+        chat.hidden = false;
+        document.getElementById("prompt").focus();
+      } catch (err) {
+        add("sys", "Could not connect: " + (err.message || err));
+        alert("Could not connect. Check password and that the agent is running.");
+      }
+    });
+
+    document.getElementById("send").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const input = document.getElementById("prompt");
+      const text = input.value.trim();
+      if (!text || !sessionId) return;
+      input.value = "";
+      add("user", text);
+      const stream = add("agent", "");
+      stream.dataset.stream = "1";
+      try {
+        await sendRpc("session/prompt", {
+          sessionId,
+          prompt: [{ type: "text", text }],
+        });
+      } catch (err) {
+        stream.textContent = "Error: " + (err.message || JSON.stringify(err));
+      }
+    });
+  </script>
+</body>
+</html>

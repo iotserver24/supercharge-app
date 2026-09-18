@@ -1,0 +1,19 @@
+# Supercharge server (Paseo-style daemon + web chat).
+# Open http://localhost:6767 after `docker compose up -d`.
+# Change SUPERCHARGE_PASSWORD for any machine that is not loopback-only.
+services:
+  supercharge:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: supercharge-server:local
+    container_name: supercharge-server
+    restart: unless-stopped
+    ports:
+      - "6767:6767"
+    environment:
+      SUPERCHARGE_PASSWORD: "change-me"
+      # SUPERCHARGE_MODEL: "zenllm"
+    volumes:
+      - ./home:/home/supercharge
+      - ./workspace:/workspace
