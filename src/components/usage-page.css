@@ -1,0 +1,10 @@
+.usage-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px clamp(20px, 5vw, 72px) 48px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+}
+.usage-page__back { display: inline-flex; align-items: center; gap: 8px; }
+.usage-page .usage-dashboard { padding-top: 24px; }

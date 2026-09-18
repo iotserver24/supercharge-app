@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>NSCameraUsageDescription</key>
+		<string>Supercharge may access the camera when a session lists media devices or a page requests video capture.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Supercharge needs the microphone for voice dictation and live voice sessions with agent delegation.</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleURLName</key>
+				<string>com.supercharge.desktop.skin</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>supercharge</string>
+					<string>supercharge-app</string>
+					<string>grok</string>
+					<string>grok-app</string>
+				</array>
+			</dict>
+		</array>
+		<key>CFBundleDocumentTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeName</key>
+				<string>Supercharge Skin Pack</string>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>LSHandlerRank</key>
+				<string>Owner</string>
+				<key>CFBundleTypeExtensions</key>
+				<array>
+					<string>superchargeskin</string>
+					<string>grokskin</string>
+				</array>
+				<key>CFBundleTypeMIMETypes</key>
+				<array>
+					<string>application/vnd.supercharge.skin</string>
+					<string>application/vnd.grok.skin</string>
+				</array>
+			</dict>
+		</array>
+	</dict>
+</plist>

@@ -1,0 +1,100 @@
+.grok-act > .grok-act__header {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  min-height: 40px;
+  gap: 8px;
+  padding: 8px 0;
+  color: var(--chat-text-2);
+}
+.grok-act__header .grok-act__header-text {
+  color: var(--chat-text);
+  font-weight: 500;
+}
+.activity-summary__counts {
+  color: var(--chat-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.activity-summary__toggle {
+  margin-inline-start: auto;
+  font-size: 12px;
+}
+.activity-summary__latest {
+  padding: 0 0 12px 24px;
+  color: var(--chat-text-2);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-details {
+  margin: 0 0 8px 24px;
+  border-block: 1px solid var(--chat-border);
+  max-height: min(45vh, 360px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.activity-details__group + .activity-details__group {
+  border-top: 1px solid var(--chat-border);
+}
+.activity-details__group > summary {
+  padding: 10px 8px;
+  color: var(--chat-text-2);
+  font-size: 13px;
+  cursor: pointer;
+}
+.activity-details__count {
+  float: inline-end;
+  font-variant-numeric: tabular-nums;
+}
+.activity-details__tools {
+  padding: 0 8px 8px;
+}
+.activity-tool__status {
+  flex-shrink: 0;
+  align-self: center;
+  margin-inline-start: auto;
+  font-size: 11px;
+  color: var(--chat-text-2);
+}
+.is-error > .activity-tool__status { color: var(--chat-danger); }
+.is-running > .activity-tool__status { color: var(--accent); }
+.activity-details__tools .grok-act__step {
+  padding-block: 7px;
+}
+.activity-details__tools .grok-act__label {
+  flex: 0 1 auto;
+  color: var(--chat-text-2);
+}
+.activity-details__tools .grok-act__mini-caret {
+  margin-inline-start: 6px;
+}
+.activity-summary__raw {
+  border: 0;
+  background: transparent;
+  color: var(--chat-text-2);
+  font: inherit;
+  font-size: 12px;
+  padding: 8px 0;
+  margin-inline-start: 24px;
+  cursor: pointer;
+}
+.grok-act__header:focus-visible,
+.activity-summary__raw:focus-visible,
+.activity-details summary:focus-visible,
+.activity-details button:focus-visible {
+  outline: 2px solid var(--chat-text-2);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.activity-details summary:hover,
+.activity-summary__raw:hover {
+  color: var(--chat-text);
+}
+.grok-act.is-live > .grok-act__header .grok-act__header-icon {
+  color: var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .grok-act .grok-act__icon,
+  .grok-act .grok-act__working-icon { animation: none; }
+}

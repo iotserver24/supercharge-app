@@ -1,0 +1,17 @@
+.cli-update-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-self: flex-end;
+  max-width: 100%;
+  margin: 4px 16px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.cli-update-notice__label { min-width: 0; }
+.cli-update-notice .cli-update-notice__action {
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 12px;
+}

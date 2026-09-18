@@ -1,0 +1,44 @@
+{
+  "_comment": "Host → Supercharge agent initialize request params + sample agent result. Locked by wire_initialize_params().",
+  "hostRequest": {
+    "jsonrpc": "2.0",
+    "method": "initialize",
+    "params": {
+      "protocolVersion": 1,
+      "clientInfo": {
+        "name": "supercharge-desktop",
+        "version": "0.2.36"
+      },
+      "clientCapabilities": {
+        "_meta": {
+          "x.ai/incrementalBashOutput": true,
+          "x.ai/bashOutputNoColor": true
+        }
+      },
+      "_meta": {
+        "clientType": "supercharge-desktop",
+        "clientIdentifier": "supercharge-desktop",
+        "clientVersion": "0.2.36"
+      }
+    }
+  },
+  "sampleAgentResult": {
+    "protocolVersion": 1,
+    "agentCapabilities": {
+      "loadSession": true
+    },
+    "authMethods": [
+      { "id": "provider.api_key", "name": "Provider API key" },
+      { "id": "cached_token", "name": "Cached token" }
+    ],
+    "_meta": {
+      "agentVersion": "supercharge 1.3.6",
+      "defaultAuthMethodId": "provider.api_key"
+    }
+  },
+  "expect": {
+    "protocolVersion": 1,
+    "clientName": "supercharge-desktop",
+    "capabilitiesIsObject": true
+  }
+}
