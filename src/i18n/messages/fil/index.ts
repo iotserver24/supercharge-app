@@ -1,4 +1,5 @@
 /** Merged fil message catalog by domain. */
+import { updateMessages } from "../../updates";
 import { filCore } from "./core";
 import { filSidebar } from "./sidebar";
 import { filProject } from "./project";
@@ -28,6 +29,7 @@ import type { MessageKey } from "../en";
 
 export const fil: Record<MessageKey, string> = {
   ...filCore,
+  ...updateMessages["fil"],
   ...filSidebar,
   ...filProject,
   ...filSession,

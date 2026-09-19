@@ -4,6 +4,7 @@
 //! new `// ── Domain ──` section rather than appending at a random spot.
 
 use crate::{
+    app_update_package, signed_update_cache,
     cli_worktrees, commands, desktop_notify, git_pr_hub, leader, mirror, os_theme, pet_window,
     remote_im, serve, session_api, ssh_remote, system_fonts, theme_editor_window, tray, updater,
     wallpaper_remote_commands,
@@ -65,6 +66,12 @@ pub fn app_invoke_handler(
         commands::pick_agent_profile,
         commands::open_external_url,
         commands::app_check_update,
+        app_update_package::app_update_staged,
+        app_update_package::app_update_download,
+        app_update_package::app_update_install,
+        signed_update_cache::app_update_signed_cached,
+        signed_update_cache::app_update_signed_download,
+        signed_update_cache::app_update_signed_install,
         crate::usage_dashboard::usage_dashboard,
         updater::is_auto_update_supported,
         updater::is_updater_plugin_enabled,
@@ -439,6 +446,7 @@ pub fn app_invoke_handler(
         commands::terminal_pty_kill,
         // ── Side browser ──
         commands::side_browser_create,
+        commands::side_browser_set_bounds,
         commands::side_browser_close,
         commands::side_browser_list,
         commands::side_browser_navigate,

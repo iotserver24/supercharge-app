@@ -329,6 +329,7 @@ export function SideWorkbench({
     } else if (openRequest.type === "url" && openRequest.url) {
       setState(
         openSideTab(state, "browser", {
+          id: openRequest.browserTabId,
           url: openRequest.url,
           title: openRequest.title,
           name: openRequest.title,

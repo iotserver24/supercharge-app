@@ -49,6 +49,8 @@ use tauri::{LogicalPosition, LogicalSize, Url};
 const LABEL_PREFIX: &str = "resource-browser";
 const DOWNLOAD_EVENT: &str = "side-browser://download";
 const PAGE_LOAD_EVENT: &str = "side-browser://page-load";
+static PAGE_STATES: LazyLock<Mutex<HashMap<String, Result<bool, String>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// url → staging path chosen in `Requested` (macOS finish omits path).
 static PENDING_DOWNLOADS: LazyLock<Mutex<HashMap<String, PendingDownload>>> =
@@ -84,10 +86,12 @@ pub struct SideBrowserDownloadPayload {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SideBrowserPageLoadPayload {
-    /// `started` | `finished`
+    /// `started` | `finished` | `failed`
     pub phase: String,
     pub label: String,
     pub url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
 /// Emit download status for the EmbeddedBrowser status line (HTTP + blob paths).
@@ -96,16 +100,50 @@ pub fn emit_download_payload(app: &AppHandle, payload: SideBrowserDownloadPayloa
 }
 
 pub(crate) fn emit_page_load(app: &AppHandle, phase: &str, label: &str, url: &str) {
+    if url == "about:blank" && matches!(PAGE_STATES.lock().get(label), Some(Err(_))) {
+        return;
+    }
+    if phase == "started" {
+        PAGE_STATES.lock().insert(label.into(), Ok(false));
+    } else if phase == "finished" {
+        let mut states = PAGE_STATES.lock();
+        if !matches!(states.get(label), Some(Err(_))) {
+            states.insert(label.into(), Ok(true));
+        }
+    }
     if let Err(e) = app.emit(
         PAGE_LOAD_EVENT,
         SideBrowserPageLoadPayload {
             phase: phase.into(),
             label: label.into(),
             url: url.into(),
+            error: None,
         },
     ) {
         tracing::warn!(error = %e, "side-browser page-load emit failed");
     }
+}
+
+pub(crate) fn emit_page_error(app: &AppHandle, label: &str, url: &str, error: String) {
+    PAGE_STATES.lock().insert(label.into(), Err(error.clone()));
+    let _ = app.emit(PAGE_LOAD_EVENT, SideBrowserPageLoadPayload {
+        phase: "failed".into(), label: label.into(), url: url.into(), error: Some(error),
+    });
+}
+
+pub fn set_bounds(app: &AppHandle, label: String, x: f64, y: f64, width: f64, height: f64) -> Result<(), String> {
+    validate_side_label(&label)?;
+    if [x, y, width, height].iter().any(|v| !v.is_finite()) || width < 1.0 || height < 1.0 {
+        return Err("invalid side browser bounds".into());
+    }
+    let webview = get_side_webview(app, &label)?;
+    #[cfg(target_os = "linux")]
+    return crate::linux_browser::set_bounds(&webview, x, y, width, height);
+    #[cfg(not(target_os = "linux"))]
+    webview.set_bounds(tauri::Rect {
+        position: LogicalPosition::new(x, y).into(),
+        size: LogicalSize::new(width, height).into(),
+    }).map_err(|e| format!("side browser bounds: {e}"))
 }
 
 fn validate_label(label: &str) -> Result<(), String> {
@@ -328,16 +366,11 @@ pub fn create(
             url = %url,
             "reusing existing side browser webview"
         );
-        existing
-            .set_position(LogicalPosition::new(x, y))
-            .map_err(|e| format!("reuse side browser position: {e}"))?;
-        existing
-            .set_size(LogicalSize::new(width, height))
-            .map_err(|e| format!("reuse side browser size: {e}"))?;
-        let should_navigate = existing
-            .url()
-            .map(|current| current != parsed)
-            .unwrap_or(true);
+        set_bounds(app, label.clone(), x, y, width, height)?;
+        // The agent owns navigation for its tab; UI reattachment must not undo
+        // a click or history transition with a previously observed URL.
+        let should_navigate = !label.starts_with("resource-browser-agent_")
+            && existing.url().map(|current| current != parsed).unwrap_or(true);
         if should_navigate {
             if handoff_google_auth_externally(app, &label, &parsed) {
                 return Ok(());
@@ -381,7 +414,13 @@ pub fn create(
         .initialization_script(polyfill)
         // Google Sign-In inside child WebView2 hard-freezes Windows (#1154).
         // Open a shared-cookie top-level window instead; cancel in-child load.
-        .on_navigation(move |url| !handoff_google_auth_externally(&nav_app, &nav_label, url))
+        .on_navigation(move |url| {
+            if handoff_google_auth_externally(&nav_app, &nav_label, url) {
+                return false;
+            }
+            emit_page_load(&nav_app, "started", &nav_label, url.as_str());
+            true
+        })
         .on_new_window(move |url, _features| {
             if handoff_google_auth_externally(&new_win_app, &new_win_label, &url) {
                 NewWindowResponse::Deny
@@ -647,13 +686,20 @@ pub fn create(
         "creating side browser child webview"
     );
 
-    window
+    let webview = window
         .add_child(
             builder,
             LogicalPosition::new(x, y),
             LogicalSize::new(width, height),
         )
         .map_err(|e| format!("side browser create: {e}"))?;
+    #[cfg(target_os = "linux")]
+    {
+        crate::linux_browser::attach(&webview, x, y, width, height)?;
+        crate::linux_browser::observe_load_errors(&webview)?;
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = webview;
 
     tracing::info!(
         target: "side_browser",
@@ -668,6 +714,7 @@ pub fn create(
 /// Close a side-browser webview if present (no error when already gone).
 pub fn close(app: &AppHandle, label: String) -> Result<(), String> {
     validate_side_label(&label)?;
+    PAGE_STATES.lock().remove(&label);
     if let Some(wv) = app.get_webview(&label) {
         wv.close().map_err(|e| format!("side browser close: {e}"))?;
     }
@@ -732,6 +779,22 @@ pub fn eval(app: &AppHandle, label: String, script: String) -> Result<String, St
         return Err("script too large".into());
     }
     let wv = get_side_webview(app, &label)?;
+    // Wry drops result callbacks queued before the first document commits.
+    // Wait off the UI thread rather than submitting an unanswerable eval.
+    let deadline = std::time::Instant::now() + Duration::from_secs(15);
+    loop {
+        let state = PAGE_STATES.lock().get(&label).cloned();
+        match state {
+            Some(Ok(false)) => {
+                if std::time::Instant::now() >= deadline {
+                    return Err("Page is still loading; wait or reload before trying again.".into());
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            Some(Err(error)) => return Err(error),
+            _ => break,
+        }
+    }
     let (tx, rx) = mpsc::channel::<String>();
     wv.eval_with_callback(script, move |result| {
         let _ = tx.send(result);

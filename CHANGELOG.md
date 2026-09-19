@@ -11,6 +11,36 @@ See `docs/llm-wiki/release.md`.
 
 **What's New popup:** each bullet's **first sentence** is what users see. Keep that sentence to one short line (added / fixed / improved — no paths, no implementation, no issue piles). A second short sentence is allowed for GitHub / this file only. Do **not** rewrite already-shipped `## [X.Y.Z]` sections.
 
+## [0.2.38] - 2026-09-19
+
+> **Highlight:** One updater keeps the app and CLI current, and the AI can drive the built-in browser live.
+>
+> **中文 · 亮点：** 应用和 CLI 在一处更新，AI 可以实时操作内置浏览器。
+
+### Added
+- App and CLI update together in one panel, with a separate restart action when you are ready.
+- The AI can open, read, click, and type in the built-in browser while you watch it live.
+
+### Changed
+- Verified update downloads are kept and reused instead of downloading the same version again.
+- Update checks compare real app versions, so desktop releases are no longer confused with CLI releases.
+
+### Fixed
+- The built-in browser no longer renders as a white screen or appear below the app on Linux.
+- Failed pages in the built-in browser show a clear error with a reload action instead of staying blank.
+
+**中文 · 新增**
+- 应用和 CLI 在同一面板一起更新，准备好后由你确认重启。
+- AI 可以在内置浏览器中打开页面、阅读内容、点击和输入，你可实时观看。
+
+**中文 · 变更**
+- 已验证的更新包会保留复用，不再重复下载相同版本。
+- 更新检查按真实应用版本比较，桌面版本不再与 CLI 版本混淆。
+
+**中文 · 修复**
+- Linux 上内置浏览器不再白屏，也不再显示在应用下方。
+- 内置浏览器加载失败时显示明确错误和重新加载按钮，不再停留空白页。
+
 ## [Unreleased]
 
 ## [0.2.36] - 2026-09-18

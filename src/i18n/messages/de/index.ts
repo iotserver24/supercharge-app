@@ -1,4 +1,5 @@
 /** Merged de message catalog by domain. */
+import { updateMessages } from "../../updates";
 import { deCore } from "./core";
 import { deSidebar } from "./sidebar";
 import { deProject } from "./project";
@@ -28,6 +29,7 @@ import type { MessageKey } from "../en";
 
 export const de: Record<MessageKey, string> = {
   ...deCore,
+  ...updateMessages["de"],
   ...deSidebar,
   ...deProject,
   ...deSession,

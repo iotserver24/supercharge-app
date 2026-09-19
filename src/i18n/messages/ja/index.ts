@@ -1,4 +1,5 @@
 /** Merged ja message catalog by domain. */
+import { updateMessages } from "../../updates";
 import { jaCore } from "./core";
 import { jaSidebar } from "./sidebar";
 import { jaProject } from "./project";
@@ -28,6 +29,7 @@ import type { MessageKey } from "../en";
 
 export const ja: Record<MessageKey, string> = {
   ...jaCore,
+  ...updateMessages["ja"],
   ...jaSidebar,
   ...jaProject,
   ...jaSession,

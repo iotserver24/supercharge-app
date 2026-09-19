@@ -1,4 +1,5 @@
 /** Merged zh message catalog by domain. */
+import { updateMessages } from "../../updates";
 import { zhCore } from "./core";
 import { zhSidebar } from "./sidebar";
 import { zhProject } from "./project";
@@ -28,6 +29,7 @@ import type { MessageKey } from "../en";
 
 export const zh: Record<MessageKey, string> = {
   ...zhCore,
+  ...updateMessages["zh"],
   ...zhSidebar,
   ...zhProject,
   ...zhSession,

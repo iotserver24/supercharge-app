@@ -132,6 +132,7 @@ import {
   resolveChatcutHandoffFromToolEvent,
 } from "@/lib/chatcutHandoff";
 import { toolEventSuggestsSkillCatalogChange } from "@/lib/skillCatalogRefresh";
+import { agentBrowserTarget, type AgentBrowserActivity } from "@/lib/agentBrowserActivity";
 
 /** Mutable bag of AppWorkbench bindings used by Host event handlers. */
 export type SessionHostEventsCtx = {
@@ -1377,6 +1378,16 @@ export function useSessionHostEvents(ctx: SessionHostEventsCtx) {
                 source: p.source,
               }),
             );
+          }),
+        );
+       track(
+          listenWithRetry<AgentBrowserActivity>("side-browser://activity", (p) => {
+            if (cancelled || !p) return;
+            const target = agentBrowserTarget(p, c.viewingSessionIdRef.current);
+            if (!target) return;
+            c.navigateWorkbench();
+            (c.openAsidePaneRef.current ?? c.openAsidePane)();
+            c.setResourceOpenTarget(target);
           }),
         );
        track(

@@ -984,6 +984,7 @@ impl SessionManager {
                     }
                 }
                 let cwd_str = cwd.to_string_lossy().to_string();
+                acp.bind_browser_session(&meta.id);
                 let open_result = Self::with_handshake_budget(acp.open_session_at(
                     resume_agent_sid.as_deref(),
                     false,
@@ -1298,6 +1299,7 @@ impl SessionManager {
             "connect session_open_begin"
         );
         let rewind_index = meta.fork_rewind_prompt_index;
+        client.bind_browser_session(&meta.id);
         let open_result = Self::with_handshake_budget(
             client.initialize_and_open_session(resume_agent_sid.as_deref(), fork_agent),
         )

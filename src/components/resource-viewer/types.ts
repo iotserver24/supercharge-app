@@ -23,7 +23,7 @@ export type ResourceOpenTarget =
       /** Optional 1-based column (passed to open_in_editor when supported). */
       column?: number | null;
     }
-  | { type: "url"; url: string; title?: string }
+  | { type: "url"; url: string; title?: string; browserTabId?: string }
   /** Open the Changes side panel (session + workspace diffs). */
   | { type: "changes"; path?: string };
 

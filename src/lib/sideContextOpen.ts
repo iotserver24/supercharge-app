@@ -16,7 +16,7 @@ export type SideContextOpenTarget =
       line?: number | null;
       column?: number | null;
     }
-  | { type: "url"; url: string; title?: string }
+  | { type: "url"; url: string; title?: string; browserTabId?: string }
   | { type: "changes"; path?: string };
 
 export type SideContextOpenResult = {
@@ -58,6 +58,7 @@ export function applySideContextOpen(
   }
   if (target.type === "url") {
     const next = openSideTab(state, "browser", {
+      id: target.browserTabId,
       url: target.url,
       title: target.title,
       name: target.title,

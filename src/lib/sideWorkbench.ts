@@ -268,7 +268,7 @@ export function openSideTab(
       existingIdx = tabs.findIndex(isPlaceholderFileTab);
     }
   }
-  if (existingIdx < 0 && kind === "browser" && meta?.url) {
+  if (existingIdx < 0 && kind === "browser" && meta?.url && !meta.id) {
     const u = meta.url.trim().replace(/\/+$/, "");
     existingIdx = tabs.findIndex(
       (t) =>
@@ -300,7 +300,9 @@ export function openSideTab(
             name: meta?.name?.trim() || hit.name,
             path: meta?.path?.trim() || hit.path,
           }
-        : hit;
+        : hit.kind === "browser" && kind === "browser"
+          ? { ...hit, url: meta?.url?.trim() || hit.url, title: meta?.title || hit.title }
+          : hit;
     const rest = tabs.filter((_, i) => i !== existingIdx);
     const keepPlaceholder = isPlaceholderFileTab(refreshed);
     const nextTabs = dropPlaceholderFileTabs(

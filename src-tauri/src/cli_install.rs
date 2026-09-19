@@ -721,6 +721,28 @@ pub async fn install_cli_latest(
 ) -> Result<CliInstallResult, String> {
     let client = http_client()?;
     let (version, version_source) = resolve_version(&app, &client).await?;
+    install_cli_version(app, allow_unverified, &version, &version_source, &client).await
+}
+
+pub async fn install_cli_exact(
+    app: AppHandle,
+    version: &str,
+    allow_unverified: bool,
+) -> Result<CliInstallResult, String> {
+    crate::update_versions::parse(version).ok_or("Invalid CLI release version")?;
+    let client = http_client()?;
+    install_cli_version(app, allow_unverified, version, "release check", &client).await
+}
+
+async fn install_cli_version(
+    app: AppHandle,
+    allow_unverified: bool,
+    version: &str,
+    version_source: &str,
+    client: &reqwest::Client,
+) -> Result<CliInstallResult, String> {
+    let version = version.to_string();
+    let version_source = version_source.to_string();
     emit(
         &app,
         progress(
@@ -732,7 +754,25 @@ pub async fn install_cli_latest(
         ),
     );
 
-    let (temp_path, asset_url, artifact_name) = download_release(&app, &client, &version).await?;
+    let (os, arch) = platform_triple()?;
+    let asset = artifact_name_for(os, arch);
+    let retained = user_home().join(".supercharge/downloads").join(format!(
+        "supercharge-{version}-{os}-{arch}{}",
+        if os == "windows" { ".exe" } else { "" }
+    ));
+    let published = fetch_published_checksum(client, &version, &asset).await;
+    let reuse = published.as_ref().is_some_and(|expected| {
+        !retained.is_symlink() && sha256_file(&retained).ok().as_ref() == Some(expected)
+    });
+    let (temp_path, asset_url, artifact_name) = if reuse {
+        (
+            retained,
+            format!("{}/{asset}", release_base(&version)),
+            asset,
+        )
+    } else {
+        download_release(&app, client, &version).await?
+    };
     let digest = sha256_file(&temp_path).unwrap_or_else(|_| {
         fs::read_to_string(temp_path.with_extension("sha256"))
             .unwrap_or_default()
@@ -758,8 +798,7 @@ pub async fn install_cli_latest(
         },
     );
 
-    let checksum_verified = match fetch_published_checksum(&client, &version, &artifact_name).await
-    {
+    let checksum_verified = match published {
         Some(expected) => {
             if expected != digest {
                 let _ = fs::remove_file(&temp_path);
@@ -806,7 +845,13 @@ pub async fn install_cli_latest(
     );
 
     let version_line = match verify_binary(&temp_path) {
-        Ok(version) => version,
+        Ok(reported) => {
+            let parsed = crate::cli_probe::extract_version_token(&reported);
+            if parsed.as_deref() != Some(version.as_str()) {
+                return Err(format!("CLI binary reports {reported}, expected {version}"));
+            }
+            reported
+        }
         Err(error) => {
             let _ = fs::remove_file(&temp_path);
             return Err(error);

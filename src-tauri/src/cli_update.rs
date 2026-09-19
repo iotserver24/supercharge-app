@@ -25,6 +25,7 @@ use crate::cli_probe;
 use crate::process_util;
 
 const CHECK_TIMEOUT: Duration = Duration::from_secs(45);
+static INSTALL_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 /// Known Supercharge CLI release channels from `supercharge update --check --json`.
 /// Do **not** invent extra channels — only map what the CLI documents.
@@ -255,8 +256,8 @@ fn parse_update_check_value(v: &Value) -> Result<CliUpdateCheck, String> {
 
     let (current, latest, update_available, error) = match (current, latest) {
         (Some(c), Some(l)) => {
-            let available = bool_field(v, &["updateAvailable", "update_available"])
-                .unwrap_or_else(|| versions_differ(&c, &l));
+            let available = bool_field(v, &["updateAvailable", "update_available"]).unwrap_or(true)
+                && crate::update_versions::newer(&c, &l);
             (c, l, available, error)
         }
         (Some(c), None) => {
@@ -362,14 +363,6 @@ fn bool_field(v: &Value, keys: &[&str]) -> Option<bool> {
     None
 }
 
-fn versions_differ(a: &str, b: &str) -> bool {
-    normalize_ver(a) != normalize_ver(b)
-}
-
-fn normalize_ver(s: &str) -> String {
-    s.trim().trim_start_matches(['v', 'V']).to_ascii_lowercase()
-}
-
 /// Resolve CLI binary and run `update --check --json`.
 pub fn check_cli_update(manual_path: Option<&str>) -> Result<CliUpdateCheck, String> {
     let probe = cli_probe::probe_cli(manual_path);
@@ -395,9 +388,8 @@ pub fn check_cli_update(manual_path: Option<&str>) -> Result<CliUpdateCheck, Str
 
 fn strip_grok_prefix(v: &str) -> String {
     let t = v.trim();
-    // e.g. "grok 0.2.111" / "Supercharge 0.2.111"
     let lower = t.to_ascii_lowercase();
-    for prefix in ["grok build ", "grok "] {
+    for prefix in ["supercharge ", "grok build ", "grok "] {
         if lower.starts_with(prefix) {
             return t[prefix.len()..].trim().to_string();
         }
@@ -417,6 +409,9 @@ pub async fn install_cli_update(
     app: tauri::AppHandle,
     opts: CliUpdateInstallOpts,
 ) -> Result<CliInstallResult, String> {
+    let _guard = INSTALL_LOCK
+        .try_lock()
+        .map_err(|_| "A CLI update is already in progress")?;
     let app_ver = env!("CARGO_PKG_VERSION");
     if !opts.acknowledge_app_behind {
         let mut behind = app_version_below_cli_upgrade_floor(app_ver);
@@ -483,9 +478,30 @@ pub async fn install_cli_update(
         });
     }
 
+    let check = tauri::async_runtime::spawn_blocking(|| {
+        let settings = crate::store::load_settings();
+        check_cli_update(settings.manual_cli_path.as_deref())
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    if let Some(error) = check.error {
+        return Err(error);
+    }
+    if !opts.force && !crate::update_versions::newer(&check.current_version, &check.latest_version)
+    {
+        return Ok(CliInstallResult {
+            ok: true,
+            path: check.cli_path,
+            version: Some(check.current_version),
+            mirror_used: None,
+            message: "Supercharge CLI is already up to date".into(),
+            sha256: None,
+            checksum_verified: None,
+        });
+    }
     info!("cli_update_install: using Supercharge release trust-chain");
     let allow = crate::store::load_settings().allow_unverified_cli_install;
-    let result = cli_install::install_cli_latest(app, allow).await?;
+    let result = cli_install::install_cli_exact(app, &check.latest_version, allow).await?;
     let mut s = crate::store::load_settings();
     s.last_cli_checksum_verified = result.checksum_verified;
     let _ = crate::store::save_settings(&s);
@@ -576,6 +592,17 @@ mod tests {
 }"#;
 
     const SAMPLE_AVAILABLE: &str = r#"{"currentVersion":"0.2.100","latestVersion":"0.2.111","updateAvailable":true,"installer":"internal","channel":"stable","autoUpdate":true,"error":null}"#;
+
+    #[test]
+    fn never_offers_equal_or_older_cli_versions_even_with_true_flag() {
+        for latest in ["1.3.17", "1.3.16", "1.3.17-beta.1", "invalid"] {
+            let dto = parse_update_check_json(&format!(
+                r#"{{"currentVersion":"1.3.17","latestVersion":"{latest}","updateAvailable":true}}"#
+            ))
+            .unwrap();
+            assert!(!dto.update_available, "{latest}");
+        }
+    }
 
     #[test]
     fn parse_up_to_date_sample() {

@@ -15,24 +15,23 @@
 
 use std::time::Duration;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 const DEFAULT_RELEASES_API_URL: &str =
-    "https://api.github.com/repos/iotserver24/supercharge-releases/releases/latest";
-const DEFAULT_RELEASES_HTML_URL: &str =
-    "https://github.com/iotserver24/supercharge-releases/releases/latest";
-const DEFAULT_RELEASES_PAGE: &str = "https://github.com/iotserver24/supercharge-releases/releases";
+    "https://api.github.com/repos/iotserver24/supercharge-app/releases?per_page=100";
+const DEFAULT_RELEASES_HTML_URL: &str = "https://github.com/iotserver24/supercharge-app/releases";
+const DEFAULT_RELEASES_PAGE: &str = "https://github.com/iotserver24/supercharge-app/releases";
 const SUPERCHARGE_RELEASES_API_ENV: &str = "SUPERCHARGE_APP_RELEASES_URL";
 const SUPERCHARGE_RELEASES_HTML_ENV: &str = "SUPERCHARGE_APP_RELEASES_HTML_URL";
 const LEGACY_RELEASES_API_ENV: &str = "GROK_APP_RELEASES_URL";
 const LEGACY_RELEASES_HTML_ENV: &str = "GROK_APP_RELEASES_HTML_URL";
-const SUPERCHARGE_REPOSITORY_URL: &str = "https://github.com/iotserver24/supercharge-releases";
+const SUPERCHARGE_REPOSITORY_URL: &str = "https://github.com/iotserver24/supercharge-app";
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(12);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppUpdateCheck {
     pub current_version: String,
@@ -47,6 +46,12 @@ pub struct AppUpdateCheck {
     /// Best-effort direct installer URL for this platform (if assets list one).
     pub download_url: Option<String>,
     pub download_name: Option<String>,
+    #[serde(default)]
+    pub release_found: bool,
+    pub checksum_url: Option<String>,
+    pub published_sha256: Option<String>,
+    #[serde(default)]
+    pub install_supported: bool,
 }
 
 /// Strip optional `v` / `V` prefix and parse `major.minor.patch` (extra suffix ignored).
@@ -66,10 +71,7 @@ pub fn parse_semver(raw: &str) -> Option<(u64, u64, u64)> {
 
 /// True when `remote` is a higher semver than `current`.
 pub fn is_remote_newer(current: &str, remote: &str) -> bool {
-    match (parse_semver(current), parse_semver(remote)) {
-        (Some(a), Some(b)) => b > a,
-        _ => false,
-    }
+    crate::update_versions::newer(current, remote)
 }
 
 fn current_os() -> &'static str {
@@ -105,6 +107,54 @@ fn is_stable_installer_name(lower_name: &str) -> bool {
         || lower_name.starts_with("supercharge_linux_")
 }
 
+fn desktop_version(tag: &str) -> Option<String> {
+    let version = tag
+        .trim()
+        .strip_prefix("app-v")
+        .or_else(|| tag.trim().strip_prefix("desktop-v"))
+        .or_else(|| tag.trim().strip_prefix("supercharge-app-v"))
+        .unwrap_or(tag.trim())
+        .trim_start_matches(['v', 'V']);
+    crate::update_versions::parse(version).map(|_| version.to_string())
+}
+
+fn desktop_asset(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    matches!(
+        lower.as_str(),
+        "supercharge-app-linux-x86_64" | "supercharge-app-linux-aarch64"
+    ) || ((lower.starts_with("supercharge_") || lower.starts_with("supercharge-"))
+        && [
+            ".dmg",
+            ".appimage",
+            ".deb",
+            ".rpm",
+            "-setup.exe",
+            ".msi",
+            ".app.tar.gz",
+        ]
+        .iter()
+        .any(|suffix| lower.ends_with(suffix)))
+}
+
+fn platform_matches(name: &str, os: &str, arch: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    let arm = lower.contains("aarch64") || lower.contains("arm64");
+    if arm != (arch == "aarch64") {
+        return false;
+    }
+    match os {
+        "macos" => lower.ends_with(".dmg"),
+        "windows" => lower.ends_with("-setup.exe") || lower.ends_with(".msi"),
+        _ => {
+            lower.ends_with(".appimage")
+                || lower.ends_with(".deb")
+                || lower.ends_with(".rpm")
+                || lower == format!("supercharge-app-linux-{arch}")
+        }
+    }
+}
+
 fn prefer_tokens(os: &str, arch: &str) -> &'static [&'static str] {
     match (os, arch) {
         ("macos", "aarch64") => &["aarch64", "arm64", "apple-silicon", ".dmg", "macos"],
@@ -135,10 +185,17 @@ fn pick_platform_asset_for(
             _ => continue,
         };
         let lower = name.to_ascii_lowercase();
-        if is_skipped_release_asset(&lower) {
+        if is_skipped_release_asset(&lower)
+            || !desktop_asset(&name)
+            || !platform_matches(&name, os, arch)
+        {
             continue;
         }
-        let mut score = 0usize;
+        let mut score = if lower == format!("supercharge-app-linux-{arch}") {
+            500
+        } else {
+            1
+        };
         for (i, token) in prefer.iter().enumerate() {
             if lower.contains(token) {
                 score += 100 - i;
@@ -215,8 +272,40 @@ pub fn parse_github_release(current_version: &str, v: &Value) -> Result<AppUpdat
         .unwrap_or_default();
     let (download_url, download_name) = pick_platform_asset(assets);
 
-    let latest_version = tag.trim_start_matches(['v', 'V']).to_string();
-    let update_available = is_remote_newer(current_version, tag);
+    let latest_version = desktop_version(tag).ok_or("invalid desktop release version")?;
+    let release_found = assets.is_some_and(|items| {
+        items.iter().any(|asset| {
+            asset
+                .get("name")
+                .and_then(Value::as_str)
+                .is_some_and(desktop_asset)
+        })
+    });
+    if !release_found {
+        return Err("release contains no desktop app package".into());
+    }
+    let update_available = is_remote_newer(current_version, &latest_version);
+    let checksum_url = assets
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|asset| asset.get("name").and_then(Value::as_str) == Some("SHA256SUMS"))
+        })
+        .and_then(|asset| asset.get("browser_download_url").and_then(Value::as_str))
+        .map(str::to_string);
+    let published_sha256 = assets
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|asset| asset.get("name").and_then(Value::as_str) == download_name.as_deref())
+        })
+        .and_then(|asset| asset.get("digest").and_then(Value::as_str))
+        .and_then(|digest| digest.strip_prefix("sha256:"))
+        .filter(|digest| digest.len() == 64 && digest.bytes().all(|b| b.is_ascii_hexdigit()))
+        .map(str::to_ascii_lowercase);
+    let install_supported = download_name
+        .as_deref()
+        .is_some_and(crate::app_update_package::can_install_asset);
 
     Ok(AppUpdateCheck {
         current_version: current_version.to_string(),
@@ -229,6 +318,10 @@ pub fn parse_github_release(current_version: &str, v: &Value) -> Result<AppUpdat
         asset_names,
         download_url,
         download_name,
+        release_found,
+        checksum_url,
+        published_sha256,
+        install_supported,
     })
 }
 
@@ -253,14 +346,14 @@ pub fn extract_tag_from_release_url(url: &str) -> Option<String> {
     if tag.is_empty() {
         return None;
     }
-    // Basic sanity: must look like a version tag
-    parse_semver(tag)?;
+    // Basic sanity: must look like a desktop version tag.
+    desktop_version(tag)?;
     Some(tag.to_string())
 }
 
 fn build_check_from_tag(current_version: &str, tag: &str, html_url: &str) -> AppUpdateCheck {
-    let latest_version = tag.trim_start_matches(['v', 'V']).to_string();
-    let update_available = is_remote_newer(current_version, tag);
+    let latest_version = desktop_version(tag).unwrap_or_else(|| current_version.to_string());
+    let update_available = is_remote_newer(current_version, &latest_version);
     let release_name = format!("v{latest_version}");
     AppUpdateCheck {
         current_version: current_version.to_string(),
@@ -273,13 +366,23 @@ fn build_check_from_tag(current_version: &str, tag: &str, html_url: &str) -> App
         asset_names: vec![],
         download_url: None,
         download_name: None,
+        release_found: true,
+        checksum_url: None,
+        published_sha256: None,
+        install_supported: false,
     }
 }
 
-fn is_allowed_update_url(url: &str) -> bool {
-    url.starts_with("https://")
-        || url.starts_with("http://127.0.0.1")
-        || url.starts_with("http://localhost")
+fn is_allowed_update_url(raw: &str) -> bool {
+    let Ok(url) = url::Url::parse(raw) else {
+        return false;
+    };
+    if !url.username().is_empty() || url.password().is_some() {
+        return false;
+    }
+    url.scheme() == "https"
+        || (url.scheme() == "http"
+            && matches!(url.host_str(), Some("127.0.0.1" | "localhost" | "[::1]")))
 }
 
 fn format_http_error(status: u16, body: &str) -> String {
@@ -337,10 +440,15 @@ async fn fetch_via_api(client: &reqwest::Client, url: &str) -> Result<Value, Str
         .header("X-GitHub-Api-Version", "2022-11-28");
 
     // Optional auth raises rate limit (5000/h). Never required for public repos.
-    if let Ok(token) = std::env::var("GITHUB_TOKEN").or_else(|_| std::env::var("GH_TOKEN")) {
-        let token = token.trim();
-        if !token.is_empty() {
-            req = req.header("Authorization", format!("Bearer {token}"));
+    if url::Url::parse(url)
+        .ok()
+        .is_some_and(|url| url.host_str() == Some("api.github.com"))
+    {
+        if let Ok(token) = std::env::var("GITHUB_TOKEN").or_else(|_| std::env::var("GH_TOKEN")) {
+            let token = token.trim();
+            if !token.is_empty() {
+                req = req.header("Authorization", format!("Bearer {token}"));
+            }
         }
     }
 
@@ -448,6 +556,45 @@ async fn fetch_via_html_redirect(
 }
 
 /// Query GitHub for the latest release and compare to this build.
+pub fn select_desktop_release(current: &str, value: &Value) -> Result<AppUpdateCheck, String> {
+    if !value.is_array() {
+        return parse_github_release(current, value);
+    }
+    let mut best: Option<AppUpdateCheck> = None;
+    for release in value.as_array().unwrap() {
+        if release.get("draft").and_then(Value::as_bool) == Some(true)
+            || release.get("prerelease").and_then(Value::as_bool) == Some(true)
+        {
+            continue;
+        }
+        let Ok(candidate) = parse_github_release(current, release) else {
+            continue;
+        };
+        if best
+            .as_ref()
+            .is_none_or(|old| is_remote_newer(&old.latest_version, &candidate.latest_version))
+        {
+            best = Some(candidate);
+        }
+    }
+    Ok(best.unwrap_or_else(|| AppUpdateCheck {
+        current_version: current.into(),
+        latest_version: current.into(),
+        update_available: false,
+        release_name: None,
+        html_url: DEFAULT_RELEASES_PAGE.into(),
+        published_at: None,
+        body: None,
+        asset_names: vec![],
+        download_url: None,
+        download_name: None,
+        release_found: false,
+        checksum_url: None,
+        published_sha256: None,
+        install_supported: false,
+    }))
+}
+
 pub async fn check_app_update() -> Result<AppUpdateCheck, String> {
     let current = env!("CARGO_PKG_VERSION");
     let api_url = release_url_from_env(
@@ -472,9 +619,12 @@ pub async fn check_app_update() -> Result<AppUpdateCheck, String> {
     let client = http_client(&ua)?;
 
     match fetch_via_api(&client, &api_url).await {
-        Ok(v) => parse_github_release(current, &v),
+        Ok(v) => select_desktop_release(current, &v),
         Err(api_err) => {
-            tracing::warn!(error = %api_err, "app update API failed; trying HTML redirect fallback");
+            if html_url == DEFAULT_RELEASES_HTML_URL {
+                return Err(api_err);
+            }
+            tracing::warn!(error = %api_err, "app update API failed; trying configured HTML fallback");
             match fetch_via_html_redirect(&client, &html_url, current).await {
                 Ok(check) => Ok(check),
                 Err(fallback_err) => Err(format!("{api_err} | {fallback_err}")),
@@ -487,6 +637,91 @@ pub async fn check_app_update() -> Result<AppUpdateCheck, String> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn ignores_cli_releases_and_uses_the_highest_stable_desktop_version() {
+        let releases = json!([
+            {"tag_name":"v1.3.17", "assets":[gh_asset("supercharge-linux-x86_64"),gh_asset("supercharge-superagent-server-linux-x86_64")]},
+            {"tag_name":"app-v0.2.37", "assets":[gh_asset("supercharge-app-linux-x86_64")]},
+            {"tag_name":"app-v0.2.40", "draft":true, "assets":[gh_asset("supercharge-app-linux-x86_64")]},
+            {"tag_name":"app-v0.2.39-beta.1", "prerelease":true, "assets":[gh_asset("supercharge-app-linux-x86_64")]},
+            {"tag_name":"app-v0.2.36", "assets":[gh_asset("supercharge-app-linux-x86_64")]}
+        ]);
+        let found = select_desktop_release("0.2.36", &releases).unwrap();
+        assert_eq!(found.latest_version, "0.2.37");
+        assert!(found.update_available && found.release_found);
+        let none = select_desktop_release("0.2.36", &json!([releases[0].clone()])).unwrap();
+        assert!(!none.update_available && !none.release_found);
+        assert_eq!(none.latest_version, "0.2.36");
+    }
+
+    #[test]
+    fn rejects_cross_platform_cli_and_checksum_assets() {
+        let assets = vec![
+            gh_asset("supercharge-linux-x86_64"),
+            gh_asset("Supercharge_0.2.37_x64-setup.exe"),
+            gh_asset("Supercharge_0.2.37_aarch64.AppImage"),
+            gh_asset("supercharge-app-linux-x86_64.sha256"),
+        ];
+        assert_eq!(
+            pick_platform_asset_for("linux", "x86_64", Some(&assets)),
+            (None, None)
+        );
+        assert!(!desktop_asset("supercharge-app-checksums.json"));
+    }
+
+    #[test]
+    fn update_metadata_urls_require_real_loopback_for_http() {
+        assert!(is_allowed_update_url("http://127.0.0.1:3210/releases"));
+        assert!(!is_allowed_update_url(
+            "http://127.0.0.1.evil.test/releases"
+        ));
+        assert!(!is_allowed_update_url(
+            "http://localhost.evil.test/releases"
+        ));
+        assert!(!is_allowed_update_url(
+            "https://user:pass@example.com/releases"
+        ));
+    }
+
+    #[test]
+    fn desktop_release_assets_are_matched_per_platform() {
+        let assets = vec![
+            gh_asset("Grok_0.2.36_x64-portable.zip"),
+            gh_asset("Supercharge-0.2.36-1.x86_64.rpm"),
+            gh_asset("Supercharge_0.2.36_aarch64.dmg"),
+            gh_asset("Supercharge_0.2.36_amd64.AppImage"),
+            gh_asset("Supercharge_0.2.36_amd64.deb"),
+            gh_asset("Supercharge_0.2.36_x64-setup.exe"),
+            gh_asset("Supercharge_0.2.36_x64.dmg"),
+            gh_asset("Supercharge_aarch64.app.tar.gz"),
+            gh_asset("SHA256SUMS"),
+        ];
+        let (linux_url, linux_name) = pick_platform_asset_for("linux", "x86_64", Some(&assets));
+        assert_eq!(
+            linux_name.as_deref(),
+            Some("Supercharge_0.2.36_amd64.AppImage")
+        );
+        assert!(linux_url
+            .unwrap()
+            .ends_with("/Supercharge_0.2.36_amd64.AppImage"));
+        let (win_url, win_name) = pick_platform_asset_for("windows", "x86_64", Some(&assets));
+        assert_eq!(
+            win_name.as_deref(),
+            Some("Supercharge_0.2.36_x64-setup.exe")
+        );
+        let (mac_arm_url, mac_arm_name) =
+            pick_platform_asset_for("macos", "aarch64", Some(&assets));
+        assert_eq!(
+            mac_arm_name.as_deref(),
+            Some("Supercharge_0.2.36_aarch64.dmg")
+        );
+        let (mac_x64_url, mac_x64_name) = pick_platform_asset_for("macos", "x86_64", Some(&assets));
+        assert_eq!(mac_x64_name.as_deref(), Some("Supercharge_0.2.36_x64.dmg"));
+        assert!(mac_x64_url
+            .unwrap()
+            .ends_with("/Supercharge_0.2.36_x64.dmg"));
+    }
 
     #[test]
     fn supercharge_release_env_precedes_legacy_env() {
@@ -519,7 +754,7 @@ mod tests {
     fn update_user_agent_is_supercharge_branded() {
         let user_agent = supercharge_user_agent("1.2.3");
         assert!(user_agent.starts_with("Supercharge/1.2.3"));
-        assert!(user_agent.contains("iotserver24/supercharge-releases"));
+        assert!(user_agent.contains("iotserver24/supercharge-app"));
         assert!(!user_agent.contains("GrokApp"));
         assert!(!user_agent.contains("grok-app"));
     }

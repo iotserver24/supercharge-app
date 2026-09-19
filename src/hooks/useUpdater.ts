@@ -1,734 +1,195 @@
-/**
- * Single-source auto-update state machine.
- *
- * - Signed release binaries (plugin enabled): Tauri check → download → confirm →
- *   install → relaunch. About “Check for updates” stops at `ready`.
- * - Local / unsigned / plugin off: GitHub Releases via `app_check_update` → open page.
- *
- * P0: `prepare_for_app_update` runs only AFTER successful `install()`, so a failed
- * install never kills agents / voice / IM / mirror.
- */
-
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
-import { isDesktopHost, type AppUpdateCheck } from "@/lib/api";
-import {
-  planUserCheckUpdate,
-  shouldInstallWhenReady,
-} from "@/lib/appUpdateHonesty";
+import * as api from "@/lib/api";
+import { UpdateController, type AppUpdateOffer, type UpdatePorts, type ComponentUpdate } from "@/lib/updateController";
+import { isNewerVersion } from "@/lib/updateVersion";
 import { DEVELOPER_MODE_CHANGE_EVENT } from "@/lib/developerModePref";
-import {
-  UPDATE_SIM_CHANGE_EVENT,
-  UPDATE_SIM_VERSION,
-  clearUpdateSimIfDeveloperModeOff,
-  installDeveloperModeSimCleanup,
-  installUpdateSimConsoleApi,
-  readUpdateSimMode,
-  sleepMs,
-} from "@/lib/updateSim";
+import { UPDATE_SIM_CHANGE_EVENT, UPDATE_SIM_VERSION, installDeveloperModeSimCleanup, installUpdateSimConsoleApi, readUpdateSimMode, sleepMs } from "@/lib/updateSim";
 
-export type UpdateStatus =
-  | { state: "idle" }
-  | { state: "checking" }
-  | { state: "up-to-date"; version?: string }
-  | { state: "available"; version: string }
-  | { state: "downloading"; version: string }
-  | { state: "installing"; version: string }
-  | { state: "ready"; version: string }
-  /** Install staged; process is about to relaunch (or sim page reload). */
-  | { state: "restarting"; version: string }
-  | { state: "error"; message: string }
-  | {
-      state: "manual-required";
-      version: string;
-      /** GitHub release page (or html_url from app_check_update). */
-      releaseUrl: string;
-      /** Best-effort platform installer asset URL. */
-      downloadUrl?: string | null;
-      assetNames?: string[];
-    };
-
-const BACKGROUND_UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const BACKGROUND_BLOCKED_STATES = new Set<UpdateStatus["state"]>([
-  "checking",
-  "available",
-  "downloading",
-  "installing",
-  "ready",
-  "restarting",
-  "manual-required",
-]);
-
-/** Supercharge override first; retain the legacy variable for existing build environments. */
-const GITHUB_RELEASES_URL =
-  (import.meta.env.VITE_SUPERCHARGE_RELEASES_URL as string | undefined) ||
-  (import.meta.env.VITE_GROK_RELEASES_URL as string | undefined) ||
-  "https://github.com/iotserver24/supercharge-releases/releases/latest";
-
-function toErrorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
-/** Last-resort string match only — prefer `is_updater_plugin_enabled` first. */
-function isUpdaterUnavailable(message: string): boolean {
-  const m = message.toLowerCase();
-  return (
-    m.includes("plugin updater not found") ||
-    m.includes("not initialized") ||
-    m.includes("command updater") ||
-    m.includes("not allowed") ||
-    m.includes('command "check" not found') ||
-    m.includes("plugin not found")
-  );
-}
-
-function canRunBackgroundCheck(status: UpdateStatus): boolean {
-  return !BACKGROUND_BLOCKED_STATES.has(status.state);
-}
-
-function initialUpdateStatus(): UpdateStatus {
-  return { state: "idle" };
-}
-
-async function isAutoUpdateSupported(): Promise<boolean> {
-  if (!isDesktopHost()) return false;
-  try {
-    return await invoke<boolean>("is_auto_update_supported");
-  } catch {
-    return false;
-  }
-}
-
-async function isUpdaterPluginEnabled(): Promise<boolean> {
-  if (!isDesktopHost()) return false;
-  try {
-    return await invoke<boolean>("is_updater_plugin_enabled");
-  } catch {
-    return false;
-  }
-}
-
-/** Tear down ACP / mirror / voice / IM — only after successful install. */
-async function prepareForAppUpdate(): Promise<void> {
-  if (!isDesktopHost()) return;
-  await invoke("prepare_for_app_update");
-}
-
-async function githubCheckUpdate(): Promise<AppUpdateCheck> {
-  return invoke<AppUpdateCheck>("app_check_update");
-}
+export type UpdateStatus = {
+  state: "idle" | "checking" | "up-to-date" | "available" | "downloading" | "installing" | "ready" | "restarting" | "error" | "manual-required";
+  version?: string;
+  message?: string;
+  releaseUrl?: string;
+  downloadUrl?: string | null;
+  assetNames?: string[];
+};
 
 export type UpdaterChannelInfo = {
-  /**
-   * Host channel honesty:
-   * - `silent` — signed release plugin + platform supports in-app install
-   * - `github_manual` — unsigned / local / plugin off
-   * - `unsupported` — plugin on but package type cannot auto-update (e.g. Linux non-AppImage)
-   * - `unknown` — not yet probed
-   */
   channel: "silent" | "github_manual" | "unsupported" | "unknown";
   pluginEnabled: boolean;
   platformSupported: boolean;
   endpoint: string;
 };
 
-export type ApplyUpdateResult =
-  | { kind: "manual"; releaseUrl: string; downloadUrl?: string | null }
-  | { kind: "busy" }
-  | { kind: "installing" }
-  | { kind: "pending" }
-  | { kind: "checking" }
-  | { kind: "noop" };
+type Staged = { version: string; installed: boolean };
+const RELEASES_URL = "https://github.com/iotserver24/supercharge-app/releases";
+const CHECK_INTERVAL = 6 * 60 * 60 * 1000;
+
+function statusFor(app: ComponentUpdate, checking: boolean, restarting: boolean): UpdateStatus {
+  if (restarting) return { state: "restarting", version: app.latest };
+  if (checking) return { state: "checking" };
+  const states: Record<ComponentUpdate["phase"], UpdateStatus["state"]> = {
+    idle: "idle", current: "up-to-date", unavailable: "idle", available: "available",
+    downloading: "downloading", downloaded: "ready", installing: "installing", installed: "ready",
+    manual: "manual-required", error: "error",
+  };
+  return { state: states[app.phase], version: app.latest || undefined, message: app.error, releaseUrl: app.releaseUrl, downloadUrl: app.downloadUrl };
+}
+
+async function withProgress<T>(event: string, version: string | undefined, onProgress: (percent: number) => void, action: () => Promise<T>): Promise<T> {
+  const unlisten = await api.listen<{ version?: string; percent?: number }>(event, (progress) => {
+    if ((!version || !progress.version || progress.version === version) && typeof progress.percent === "number") onProgress(progress.percent);
+  });
+  try { return await action(); } finally { unlisten(); }
+}
 
 export function useUpdater() {
-  const [status, setStatusState] = useState<UpdateStatus>(initialUpdateStatus);
-  const [channelInfo, setChannelInfo] = useState<UpdaterChannelInfo>({
-    channel: "unknown",
-    pluginEnabled: false,
-    platformSupported: false,
-    endpoint: "",
-  });
-  const statusRef = useRef<UpdateStatus>(initialUpdateStatus());
-  const updateRef = useRef<Update | null>(null);
-  const checkInFlightRef = useRef(false);
-  const downloadInFlightRef = useRef(false);
-  const installInFlightRef = useRef(false);
-  const manualResultRequestedRef = useRef(false);
-  /**
-   * When true, finish download → install → relaunch (confirmed sidebar apply).
-   * About “Check for updates” and background discovery only stage to `ready`.
-   */
-  const installWhenReadyRef = useRef(false);
-  /** Bumped on unmount so in-flight async work never setState on a dead tree. */
-  const generationRef = useRef(0);
-  const aliveRef = useRef(true);
-
-  const setStatus = useCallback((nextStatus: UpdateStatus) => {
-    if (!aliveRef.current) return;
-    statusRef.current = nextStatus;
-    setStatusState(nextStatus);
-  }, []);
-
-  /** Always close the previous Update handle (no in-flight short-circuit). */
-  const closeUpdate = useCallback(async () => {
-    const current = updateRef.current;
-    if (!current) return;
-    updateRef.current = null;
-    try {
-      await current.close();
-    } catch {
-      // ignore — handle may already be closed after failed download/install
-    }
-  }, []);
-
-  /** Replace updateRef, closing any previous handle first. */
-  const adoptUpdate = useCallback(async (next: Update | null) => {
-    const prev = updateRef.current;
-    updateRef.current = next;
-    if (prev && prev !== next) {
-      try {
-        await prev.close();
-      } catch {
-        // ignore
-      }
-    }
-  }, []);
-
-  const performInstall = useCallback(
-    async (version: string) => {
-      if (installInFlightRef.current) {
-        return;
-      }
-
-      // Sim silent path: full chain install → restarting → page reload
-      // (stand-in for process relaunch). Developer mode + sim prefs persist.
-      if (readUpdateSimMode() === "silent") {
-        installInFlightRef.current = true;
-        installWhenReadyRef.current = false;
-        try {
-          setStatus({ state: "installing", version });
-          await sleepMs(900);
-          if (!aliveRef.current) return;
-          setStatus({ state: "restarting", version });
-          await sleepMs(700);
-          if (!aliveRef.current) return;
-          console.info(
-            `[grok] Update sim: install complete for ${version} — reloading to simulate relaunch`,
-          );
-          // Full-flow completion: same as product relaunch from the UI's POV.
-          window.location.reload();
-        } catch (err) {
-          if (!aliveRef.current) return;
-          setStatus({ state: "error", message: toErrorMessage(err) });
-          installInFlightRef.current = false;
+  const [channelInfo, setChannelInfo] = useState<UpdaterChannelInfo>({ channel: "unknown", pluginEnabled: false, platformSupported: false, endpoint: "" });
+  const signedUpdateRef = useRef<Update | null>(null);
+  const aliveRef = useRef(false);
+  const portsRef = useRef<UpdatePorts | null>(null);
+  if (!portsRef.current) {
+    portsRef.current = {
+      checkApp: async (): Promise<AppUpdateOffer> => {
+        const sim = readUpdateSimMode();
+        if (sim !== "off") {
+          if (aliveRef.current) setChannelInfo({ channel: sim === "silent" ? "silent" : "github_manual", pluginEnabled: sim === "silent", platformSupported: true, endpoint: "sim://local" });
+          return { current: "0.0.0", latest: UPDATE_SIM_VERSION, source: sim === "silent" ? "signed" : "manual", releaseFound: true, updateAvailable: true, releaseUrl: RELEASES_URL };
         }
-        // Leave installInFlight true across reload; page tear-down clears it.
-        return;
-      }
-
-      const update = updateRef.current;
-      if (!update) {
-        setStatus({
-          state: "error",
-          message: "Update is not ready to install yet",
+        if (!api.isDesktopHost()) throw new Error("Updates are only available in the desktop app");
+        const current = await getVersion();
+        const staged = await invoke<Staged | null>("app_update_staged");
+        const channel = await invoke<UpdaterChannelInfo>("updater_status");
+        if (aliveRef.current) setChannelInfo(channel);
+        if (channel.pluginEnabled && channel.platformSupported) {
+          const update = await check({ headers: { "Cache-Control": "no-cache" }, allowDowngrades: false, timeout: 20000 });
+          if (update && isNewerVersion(current, update.version)) {
+            const old = signedUpdateRef.current;
+            signedUpdateRef.current = update;
+            if (old && old !== update) await old.close().catch(() => undefined);
+            const cached = await invoke<boolean>("app_update_signed_cached", { rid: update.rid });
+            return { current, latest: update.version, source: "signed", cached, releaseFound: true, updateAvailable: true, releaseUrl: RELEASES_URL };
+          }
+          if (update) await update.close();
+          return { current, latest: current, source: "signed", releaseFound: true, updateAvailable: false };
+        }
+        const result = await api.appCheckUpdate().catch((error) => {
+          if (staged && isNewerVersion(current, staged.version)) return null;
+          throw error;
         });
-        return;
-      }
-
-      installInFlightRef.current = true;
-      installWhenReadyRef.current = false;
-      try {
-        setStatus({ state: "installing", version });
-        // P0: stage the update first. Only tear down children after install succeeds
-        // so a failed install leaves agents / IM / mirror intact.
-        await update.install();
-        try {
-          await prepareForAppUpdate();
-        } catch (prepErr) {
-          // Install already staged — still relaunch so the new binary can start.
-          console.warn(
-            "prepare_for_app_update failed; continuing relaunch",
-            prepErr,
-          );
+        if (staged && isNewerVersion(current, staged.version) && (!result || !isNewerVersion(staged.version, result.latestVersion))) {
+          return { current, latest: staged.version, source: "package", releaseFound: true, updateAvailable: true, cached: true, installed: staged.installed, releaseUrl: result?.htmlUrl || RELEASES_URL };
         }
-        updateRef.current = null;
-        if (!aliveRef.current) return;
-        setStatus({ state: "restarting", version });
+        if (!result) throw new Error("Could not read the desktop release");
+        return {
+          current: result.currentVersion, latest: result.latestVersion,
+          source: result.installSupported ? "package" : result.updateAvailable ? "manual" : "none",
+          releaseFound: result.releaseFound !== false, updateAvailable: result.updateAvailable,
+          releaseUrl: result.htmlUrl, downloadUrl: result.downloadUrl,
+        };
+      },
+      checkCli: async () => {
+        if (readUpdateSimMode() !== "off") return { current: "1.0.0", latest: UPDATE_SIM_VERSION, updateAvailable: true };
+        if (!api.isDesktopHost()) throw new Error("Updates are only available in the desktop app");
+        try {
+          const result = await api.cliUpdateCheck();
+          if (result.error) throw new Error(result.error);
+          return { current: result.currentVersion || result.current || result.version || "", latest: result.latestVersion || result.latest || "", updateAvailable: result.updateAvailable === true };
+        } catch (error) {
+          // Old or stub CLIs may not support `update --check --json`. Probe the
+          // binary so the panel still shows the installed version with a clear,
+          // translated reason instead of leaking raw command output.
+          let found: boolean | null = null;
+          let current = "";
+          try {
+            const probe = await api.probeCli();
+            found = !!probe?.found;
+            current = String(probe?.version ?? "").trim();
+          } catch { /* probe failure keeps the raw error */ }
+          if (found === false) {
+            throw Object.assign(new Error("Supercharge CLI is not installed"), { code: "updates.cliMissing" });
+          }
+          if (found === true && current) {
+            throw Object.assign(new Error("CLI update check is unavailable for this CLI"), {
+              code: "updates.cliCheckUnavailable",
+              cliCurrent: current,
+            });
+          }
+          throw error;
+        }
+      },
+      downloadApp: async (version, source, progress) => {
+        if (readUpdateSimMode() === "silent") { progress(25); await sleepMs(600); progress(100); return; }
+        if (source === "signed") {
+          const update = signedUpdateRef.current;
+          if (!update || update.version !== version) throw new Error("App update changed; check for updates again");
+          await withProgress("app://update-progress", version, progress, () => invoke("app_update_signed_download", { rid: update.rid }));
+        } else {
+          await withProgress("app://update-progress", version, progress, () => invoke("app_update_download", { expectedVersion: version }));
+        }
+      },
+      installApp: async (_version, source) => {
+        if (readUpdateSimMode() === "silent") { await sleepMs(300); return; }
+        if (source === "signed") {
+          const update = signedUpdateRef.current;
+          if (!update) throw new Error("Signed app update is not ready");
+          await invoke("app_update_signed_install", { rid: update.rid });
+        } else {
+          await invoke("app_update_install");
+        }
+      },
+      installCli: async (progress) => {
+        if (readUpdateSimMode() !== "off") { progress(25); await sleepMs(600); progress(100); return { version: UPDATE_SIM_VERSION }; }
+        const result = await withProgress("setup://cli-install-progress", undefined, progress, () => api.cliUpdateInstall({ acknowledgeAppBehind: true }));
+        if (!result.ok) throw new Error(result.message || result.error || "CLI update failed");
+        const version = result.version;
+        if (!version) throw new Error("CLI update did not report its installed version");
+        return { version };
+      },
+      prepareRestart: async () => {
+        if (readUpdateSimMode() !== "off") return;
+        await invoke("prepare_for_app_update");
+      },
+      relaunch: async () => {
+        if (readUpdateSimMode() !== "off") { window.location.reload(); return; }
         await relaunch();
-      } catch (err) {
-        if (!aliveRef.current) return;
-        setStatus({ state: "error", message: toErrorMessage(err) });
-      } finally {
-        installInFlightRef.current = false;
-      }
-    },
-    [setStatus],
-  );
-
-  const downloadUpdate = useCallback(
-    async (version: string) => {
-      if (downloadInFlightRef.current) {
-        return;
-      }
-
-      // DEV sim silent path — no Tauri Update handle.
-      if (readUpdateSimMode() === "silent") {
-        downloadInFlightRef.current = true;
-        try {
-          setStatus({ state: "downloading", version });
-          await sleepMs(1200);
-          if (!aliveRef.current) return;
-          setStatus({ state: "ready", version });
-          if (installWhenReadyRef.current) {
-            await performInstall(version);
-          }
-        } finally {
-          downloadInFlightRef.current = false;
-        }
-        return;
-      }
-
-      downloadInFlightRef.current = true;
-      try {
-        const update = updateRef.current;
-        if (!update) {
-          return;
-        }
-
-        setStatus({ state: "downloading", version });
-        await update.download();
-        if (!aliveRef.current) return;
-        setStatus({ state: "ready", version });
-        // Confirmed apply only — About check / background stay at `ready`.
-        if (installWhenReadyRef.current) {
-          await performInstall(version);
-        }
-      } catch (err) {
-        if (!aliveRef.current) return;
-        installWhenReadyRef.current = false;
-        setStatus({ state: "error", message: toErrorMessage(err) });
-      } finally {
-        downloadInFlightRef.current = false;
-      }
-    },
-    [performInstall, setStatus],
-  );
-
-  const installAndRelaunch = useCallback(async () => {
-    // Only install when download has finished (status ready).
-    const current = statusRef.current;
-    if (current.state !== "ready") {
-      setStatus({
-        state: "error",
-        message: "Update is not ready to install yet",
-      });
-      return;
-    }
-    await performInstall(current.version);
-  }, [performInstall, setStatus]);
-
-  const applyGithubResult = useCallback(
-    (r: AppUpdateCheck) => {
-      if (!r.updateAvailable) {
-        installWhenReadyRef.current = false;
-        setStatus({
-          state: "up-to-date",
-          version: r.currentVersion,
-        });
-        return;
-      }
-      // Manual / GitHub path cannot silent-install.
-      installWhenReadyRef.current = false;
-      setStatus({
-        state: "manual-required",
-        version: r.latestVersion,
-        releaseUrl: r.htmlUrl || GITHUB_RELEASES_URL,
-        downloadUrl: r.downloadUrl,
-        assetNames: r.assetNames,
-      });
-    },
-    [setStatus],
-  );
-
-  const runGithubFallback = useCallback(
-    async ({ background }: { background: boolean }) => {
-      const shouldShow = !background || manualResultRequestedRef.current;
-      try {
-        const r = await githubCheckUpdate();
-        if (!aliveRef.current) return;
-        if (shouldShow || r.updateAvailable) {
-          applyGithubResult(r);
-        }
-      } catch (err) {
-        if (!aliveRef.current) return;
-        if (shouldShow) {
-          installWhenReadyRef.current = false;
-          setStatus({ state: "error", message: toErrorMessage(err) });
-        }
-      }
-    },
-    [applyGithubResult, setStatus],
-  );
-
-  const runUpdateCheck = useCallback(
-    async ({ background }: { background: boolean }) => {
-      const simMode = readUpdateSimMode();
-
-      // DEV simulation: skip host/plugin I/O entirely.
-      if (simMode !== "off") {
-        if (checkInFlightRef.current) {
-          if (!background) {
-            manualResultRequestedRef.current = true;
-            setStatus({ state: "checking" });
-          }
-          return;
-        }
-        if (downloadInFlightRef.current || installInFlightRef.current) {
-          return;
-        }
-        if (background && !canRunBackgroundCheck(statusRef.current)) {
-          return;
-        }
-
-        checkInFlightRef.current = true;
-        try {
-          if (!background) {
-            setStatus({ state: "checking" });
-          }
-          await sleepMs(background ? 350 : 500);
-          if (!aliveRef.current) return;
-
-          if (simMode === "manual") {
-            installWhenReadyRef.current = false;
-            setStatus({
-              state: "manual-required",
-              version: UPDATE_SIM_VERSION,
-              releaseUrl: GITHUB_RELEASES_URL,
-              downloadUrl: GITHUB_RELEASES_URL,
-              assetNames: ["GrokApp-sim.dmg", "GrokApp-sim.exe"],
-            });
-            return;
-          }
-
-          // silent
-          setStatus({ state: "available", version: UPDATE_SIM_VERSION });
-          void downloadUpdate(UPDATE_SIM_VERSION);
-        } finally {
-          checkInFlightRef.current = false;
-        }
-        return;
-      }
-
-      if (!isDesktopHost()) {
-        if (!background) {
-          setStatus({
-            state: "error",
-            message: "Updates are only available in the desktop app",
-          });
-        }
-        return;
-      }
-
-      if (checkInFlightRef.current) {
-        if (!background) {
-          manualResultRequestedRef.current = true;
-          setStatus({ state: "checking" });
-        }
-        return;
-      }
-
-      if (downloadInFlightRef.current || installInFlightRef.current) {
-        return;
-      }
-
-      if (background && !canRunBackgroundCheck(statusRef.current)) {
-        return;
-      }
-
-      checkInFlightRef.current = true;
-      manualResultRequestedRef.current = false;
-      const gen = generationRef.current;
-
-      try {
-        if (!background) {
-          setStatus({ state: "checking" });
-        }
-
-        const pluginOn = await isUpdaterPluginEnabled();
-        if (generationRef.current !== gen || !aliveRef.current) return;
-
-        if (!pluginOn) {
-          // Single path: plugin off → GitHub check (no separate Settings branch).
-          await runGithubFallback({ background });
-          return;
-        }
-
-        // Close any previous Update handle before requesting a new one.
-        await closeUpdate();
-        if (generationRef.current !== gen || !aliveRef.current) return;
-
-        let update: Update | null = null;
-        try {
-          update = await check({
-            headers: { "Cache-Control": "no-cache" },
-          });
-        } catch (err) {
-          const message = toErrorMessage(err);
-          if (isUpdaterUnavailable(message)) {
-            console.warn(
-              `updater unavailable, falling back to GitHub: ${message}`,
-            );
-            await runGithubFallback({ background });
-            return;
-          }
-          // Plugin on but endpoint/network failed — fall back so one button still works.
-          console.warn(
-            `updater check failed, falling back to GitHub: ${message}`,
-          );
-          await runGithubFallback({ background });
-          return;
-        }
-
-        if (generationRef.current !== gen || !aliveRef.current) {
-          if (update) {
-            try {
-              await update.close();
-            } catch {
-              /* ignore */
-            }
-          }
-          return;
-        }
-
-        const shouldShowQuietResult =
-          !background || manualResultRequestedRef.current;
-
-        if (update) {
-          const autoUpdateOk = await isAutoUpdateSupported();
-          if (generationRef.current !== gen || !aliveRef.current) {
-            try {
-              await update.close();
-            } catch {
-              /* ignore */
-            }
-            return;
-          }
-
-          if (autoUpdateOk) {
-            await adoptUpdate(update);
-            setStatus({ state: "available", version: update.version });
-            void downloadUpdate(update.version);
-          } else {
-            installWhenReadyRef.current = false;
-            try {
-              await update.close();
-            } catch {
-              /* ignore */
-            }
-            await adoptUpdate(null);
-            setStatus({
-              state: "manual-required",
-              version: update.version,
-              releaseUrl: GITHUB_RELEASES_URL,
-            });
-          }
-        } else if (shouldShowQuietResult) {
-          installWhenReadyRef.current = false;
-          setStatus({ state: "up-to-date" });
-        }
-      } finally {
-        if (generationRef.current === gen) {
-          manualResultRequestedRef.current = false;
-          checkInFlightRef.current = false;
-        }
-      }
-    },
-    [adoptUpdate, closeUpdate, downloadUpdate, runGithubFallback, setStatus],
-  );
-
-  const checkForUpdate = useCallback(async () => {
-    // About “Check for updates”: check / download only. Stop at `ready`.
-    // Never arm auto-install — that requires confirmed Install and restart.
-    const current = statusRef.current;
-    const plan = planUserCheckUpdate(current);
-    if (plan.action === "noop") {
-      return;
-    }
-    if (plan.action === "download") {
-      if (!downloadInFlightRef.current) {
-        void downloadUpdate(plan.version);
-      }
-      return;
-    }
-    await runUpdateCheck({ background: false });
-  }, [downloadUpdate, runUpdateCheck]);
-
-  const checkForUpdateInBackground = useCallback(async () => {
-    await runUpdateCheck({ background: true });
-  }, [runUpdateCheck]);
-
-  /**
-   * Sidebar / one-shot update affordance (call after in-app confirm).
-   * - Signed path: download (if needed) → install → relaunch.
-   * - Manual path: return URLs so the UI can open GitHub (no confirm).
-   */
-  const applyAvailableUpdate = useCallback(async (): Promise<ApplyUpdateResult> => {
-    const current = statusRef.current;
-
-    if (current.state === "manual-required") {
-      return {
-        kind: "manual",
-        releaseUrl: current.releaseUrl,
-        downloadUrl: current.downloadUrl,
-      };
-    }
-
-    if (
-      current.state === "installing" ||
-      current.state === "restarting"
-    ) {
-      return { kind: "busy" };
-    }
-
-    installWhenReadyRef.current = shouldInstallWhenReady("apply");
-
-    if (current.state === "ready") {
-      await installAndRelaunch();
-      return { kind: "installing" };
-    }
-
-    if (current.state === "downloading" || current.state === "available") {
-      if (current.state === "available" && !downloadInFlightRef.current) {
-        // Real path needs a Tauri Update handle; silent sim does not.
-        if (updateRef.current || readUpdateSimMode() === "silent") {
-          void downloadUpdate(current.version);
-        }
-      }
-      return { kind: "pending" };
-    }
-
-    if (current.state === "checking") {
-      return { kind: "checking" };
-    }
-
-    // idle / up-to-date / error — full check, then install when ready.
-    await runUpdateCheck({ background: false });
-    return { kind: "checking" };
-  }, [downloadUpdate, installAndRelaunch, runUpdateCheck]);
-
-  const refreshChannelInfo = useCallback(async () => {
-    const simMode = readUpdateSimMode();
-    if (simMode !== "off") {
-      setChannelInfo({
-        channel: simMode === "silent" ? "silent" : "github_manual",
-        pluginEnabled: simMode === "silent",
-        platformSupported: true,
-        endpoint: simMode === "silent" ? "sim://local-dev" : "",
-      });
-      return;
-    }
-    if (!isDesktopHost()) return;
-    try {
-      const s = await invoke<{
-        platformSupported: boolean;
-        pluginEnabled: boolean;
-        channel: string;
-        endpoint: string;
-      }>("updater_status");
-      if (!aliveRef.current) return;
-      // Prefer host string when known; derive unsupported from flags so a
-      // collapsed github_manual never claims silent for non-AppImage Linux.
-      let channel: UpdaterChannelInfo["channel"] = "unknown";
-      if (s.channel === "silent") {
-        channel = "silent";
-      } else if (s.channel === "unsupported") {
-        channel = "unsupported";
-      } else if (s.channel === "github_manual") {
-        channel =
-          s.pluginEnabled && !s.platformSupported
-            ? "unsupported"
-            : "github_manual";
-      } else if (s.pluginEnabled && !s.platformSupported) {
-        channel = "unsupported";
-      } else if (!s.pluginEnabled) {
-        channel = "github_manual";
-      }
-      setChannelInfo({
-        channel,
-        pluginEnabled: !!s.pluginEnabled,
-        platformSupported: !!s.platformSupported,
-        endpoint: s.endpoint || "",
-      });
-    } catch {
-      /* ignore — About still works via status machine */
-    }
-  }, []);
-
-  /**
-   * Re-seed after Settings developer / sim toggles. Resets blocked states so
-   * background discovery is not stuck on a previous sim `ready`.
-   */
-  const reseedFromPrefs = useCallback(async () => {
-    clearUpdateSimIfDeveloperModeOff();
-    installUpdateSimConsoleApi();
-    installWhenReadyRef.current = false;
-    downloadInFlightRef.current = false;
-    installInFlightRef.current = false;
-    checkInFlightRef.current = false;
-    await closeUpdate();
-    setStatus({ state: "idle" });
-    await refreshChannelInfo();
-    await runUpdateCheck({ background: true });
-  }, [closeUpdate, refreshChannelInfo, runUpdateCheck, setStatus]);
+      },
+    };
+  }
+  const controllerRef = useRef<UpdateController | null>(null);
+  if (!controllerRef.current) controllerRef.current = new UpdateController(portsRef.current);
+  const controller = controllerRef.current;
+  const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
 
   useEffect(() => {
     aliveRef.current = true;
-    const gen = ++generationRef.current;
     installDeveloperModeSimCleanup();
     installUpdateSimConsoleApi();
-
-    void refreshChannelInfo();
-
-    // Startup + periodic discovery (download only; no silent install).
-    void checkForUpdateInBackground();
-
-    const intervalId = window.setInterval(() => {
-      if (generationRef.current !== gen) return;
-      // While simulating, discovery is driven by sim reseed / click path.
-      if (readUpdateSimMode() !== "off") return;
-      void checkForUpdateInBackground();
-    }, BACKGROUND_UPDATE_CHECK_INTERVAL_MS);
-
-    const onPrefsChange = () => {
-      if (generationRef.current !== gen) return;
-      void reseedFromPrefs();
-    };
-    window.addEventListener(UPDATE_SIM_CHANGE_EVENT, onPrefsChange);
-    window.addEventListener(DEVELOPER_MODE_CHANGE_EVENT, onPrefsChange);
-
+    const timer = window.setTimeout(() => void controller.check(), 4500);
+    const interval = window.setInterval(() => void controller.check(), CHECK_INTERVAL);
+    const reseed = () => { controller.reset(); void controller.check(); };
+    window.addEventListener(UPDATE_SIM_CHANGE_EVENT, reseed);
+    window.addEventListener(DEVELOPER_MODE_CHANGE_EVENT, reseed);
     return () => {
       aliveRef.current = false;
-      generationRef.current += 1;
-      window.clearInterval(intervalId);
-      window.removeEventListener(UPDATE_SIM_CHANGE_EVENT, onPrefsChange);
-      window.removeEventListener(DEVELOPER_MODE_CHANGE_EVENT, onPrefsChange);
-      void closeUpdate();
+      window.clearTimeout(timer);
+      window.clearInterval(interval);
+      window.removeEventListener(UPDATE_SIM_CHANGE_EVENT, reseed);
+      window.removeEventListener(DEVELOPER_MODE_CHANGE_EVENT, reseed);
     };
-  }, [
-    checkForUpdateInBackground,
-    closeUpdate,
-    refreshChannelInfo,
-    reseedFromPrefs,
-  ]);
+  }, [controller]);
 
+  const checkForUpdate = useCallback(() => controller.check(), [controller]);
+  const updateAll = useCallback(() => controller.update(), [controller]);
+  const restartToUpdate = useCallback(() => controller.restart(), [controller]);
   return {
-    status,
-    channelInfo,
-    checkForUpdate,
-    installAndRelaunch,
-    applyAvailableUpdate,
-    githubReleasesUrl: GITHUB_RELEASES_URL,
+    snapshot, channelInfo, status: statusFor(snapshot.app, snapshot.checking, snapshot.restarting),
+    checkForUpdate, updateAll, restartToUpdate,
+    installAndRelaunch: restartToUpdate,
+    githubReleasesUrl: RELEASES_URL,
   };
 }

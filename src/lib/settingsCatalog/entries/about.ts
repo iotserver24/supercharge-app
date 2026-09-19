@@ -4,6 +4,14 @@ import type { SettingsEntry } from "../types";
 export const ABOUT_ENTRIES: readonly SettingsEntry[] = [
   // ── about ──
   {
+    id: "about.updates",
+    section: "about",
+    anchorId: "settings-anchor-updates",
+    labelKey: "updates.title",
+    descKeys: ["updates.description", "updates.restartHint"],
+    keywords: ["updates", "app update", "cli update", "restart", "download", "更新", "重启"],
+  },
+  {
     id: "about.app",
     section: "about",
     anchorId: "settings-anchor-about",

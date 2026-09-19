@@ -351,6 +351,7 @@ pub struct AcpClient {
     pending: ParkingMutex<HashMap<u64, Pending>>,
     event_tx: mpsc::UnboundedSender<(Option<String>, AcpEvent)>,
     agent_session_id: ParkingMutex<Option<String>>,
+    browser_binding: ParkingMutex<Option<crate::browser_bridge::BrowserBinding>>,
     #[allow(dead_code)]
     cli_path: PathBuf,
     cwd: PathBuf,
@@ -814,7 +815,12 @@ impl AcpClient {
         }
         // Top-level `supercharge --rules <RULES>` (before `agent`) — session-only
         // system-prompt append; not accepted under `grok agent` / `stdio`.
-        for a in extra_rules_spawn_flags(opts.extra_rules.as_deref()) {
+        let rules = if ssh_alias.is_none() && wsl_launch.is_none() && !empty_mcp_servers {
+            Some(format!("{}\nFor browser tasks, prefer the supercharge-browser MCP tools: they control the live browser inside Supercharge that the user can watch. Use browser_open and browser_snapshot before clicking or typing. A separate browser is not visible in that pane.", opts.extra_rules.as_deref().unwrap_or("")))
+        } else {
+            opts.extra_rules.clone()
+        };
+        for a in extra_rules_spawn_flags(rules.as_deref()) {
             cmd.arg(a);
         }
         // Top-level `supercharge --system-prompt-override <PROMPT>` (before `agent`) —
@@ -1042,6 +1048,7 @@ impl AcpClient {
             pending: ParkingMutex::new(HashMap::new()),
             event_tx: event_tx.clone(),
             agent_session_id: ParkingMutex::new(None),
+            browser_binding: ParkingMutex::new(None),
             cli_path,
             cwd,
             stopped: AtomicBool::new(false),
@@ -1139,6 +1146,7 @@ impl AcpClient {
             pending: ParkingMutex::new(HashMap::new()),
             event_tx,
             agent_session_id: ParkingMutex::new(None),
+            browser_binding: ParkingMutex::new(None),
             cli_path: PathBuf::from(format!("tcp://{addr}")),
             cwd,
             stopped: AtomicBool::new(false),
@@ -1157,6 +1165,16 @@ impl AcpClient {
         });
         client.start_read_loop(Box::new(read_half));
         Ok((client, event_rx))
+    }
+
+    pub fn bind_browser_session(&self, session_id: &str) {
+        if !self.owns_local_process_tree || self.empty_mcp_servers { return; }
+        let mut binding = self.browser_binding.lock();
+        if binding.as_ref().is_some_and(|b| b.session_id() == session_id) { return; }
+        match crate::browser_bridge::bind(session_id) {
+            Ok(next) => *binding = Some(next),
+            Err(error) => warn!(%error, "in-app browser tools unavailable for session"),
+        }
     }
 
     /// Whether this process was spawned for a custom relay route (api_key only).
@@ -2273,7 +2291,7 @@ impl AcpClient {
         // hard budget falls back to `[]` so session/new|load always proceeds.
         // Official aux side-channel uses empty inject (no nested official-aux MCP).
         // SSH: do not scan the remote path as a local project.
-        let mcp_servers = if self.empty_mcp_servers || self.ssh_alias.is_some() {
+        let mut mcp_servers = if self.empty_mcp_servers || self.ssh_alias.is_some() {
             if self.ssh_alias.is_some() {
                 info!("acp session open empty mcpServers (ssh remote)");
             } else {
@@ -2312,6 +2330,13 @@ impl AcpClient {
             info!("acp session open injecting mcpServers count={mcp_count}");
             servers
         };
+
+        if let Some(entry) = self.browser_binding.lock().as_ref().and_then(|binding| binding.entry()) {
+            if let Some(servers) = mcp_servers.as_array_mut() {
+                servers.retain(|server| server.get("name").and_then(Value::as_str) != Some("supercharge-browser"));
+                servers.push(entry);
+            }
+        }
 
         if let Some(rid) = resume_session_id.map(str::trim).filter(|s| !s.is_empty()) {
             // CLI `--fork-session`: new agent session id with parent context.
@@ -2514,8 +2539,14 @@ impl AcpClient {
     pub async fn update_mcp_servers(
         &self,
         session_id: &str,
-        mcp_servers: Value,
+        mut mcp_servers: Value,
     ) -> Result<Value, String> {
+        if let Some(entry) = self.browser_binding.lock().as_ref().and_then(|binding| binding.entry()) {
+            if let Some(servers) = mcp_servers.as_array_mut() {
+                servers.retain(|server| server.get("name").and_then(Value::as_str) != Some("supercharge-browser"));
+                servers.push(entry);
+            }
+        }
         self.request_timeout(
             "_x.ai/session/update_mcp_servers",
             json!({
@@ -2973,6 +3004,7 @@ impl AcpClient {
     }
 
     pub async fn kill(&self) {
+        self.browser_binding.lock().take();
         // Stop both halves of the transport before touching the child. This is
         // essential for TCP ACP: closing only the writer left the reader task
         // alive and allowed ghost events from a remote peer after recycle.

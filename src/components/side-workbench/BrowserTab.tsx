@@ -156,6 +156,22 @@ export function BrowserTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sshAlias]);
 
+  useEffect(() => {
+    if (initialUrl?.trim() && !tabId.startsWith("agent_")) void applyUrl(initialUrl, false);
+    // Agent activity focuses its existing page; only manual targets navigate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialUrl]);
+
+  const onNavigation = (next: string) => {
+    if (!next || next === "about:blank") return;
+    setViewUrl(next);
+    if (!tunnelOn) {
+      setUrl(next);
+      setAddressDraft(next);
+      onUrlChange?.(next);
+    }
+  };
+
   /** Toolbar refresh always reloads the current page. */
   const reload = () => {
     // Prefer the live draft only if it matches the committed url; otherwise
@@ -369,6 +385,7 @@ export function BrowserTab({
           instanceId={tabId}
           reloadKey={reloadKey}
           onLoadingChange={setPageLoading}
+          onNavigation={onNavigation}
           className="sw-browser__embed"
         />
       </div>

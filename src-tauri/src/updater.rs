@@ -117,8 +117,7 @@ pub async fn prepare_for_app_update(
     remote_im: State<'_, Arc<RemoteImState>>,
 ) -> Result<(), String> {
     if UPDATE_SHUTDOWN_DONE.swap(true, Ordering::SeqCst) {
-        info!(target: "supercharge_app::updater", "prepare_for_app_update already completed");
-        return Ok(());
+        return Err("An update restart is already being prepared".into());
     }
 
     info!(target: "supercharge_app::updater", "stopping managed processes before app relaunch");
@@ -139,6 +138,7 @@ pub async fn prepare_for_app_update(
     mirror.stop_sync();
 
     info!(target: "supercharge_app::updater", "managed processes stopped; safe to relaunch");
+    UPDATE_SHUTDOWN_DONE.store(false, Ordering::SeqCst);
     Ok(())
 }
 

@@ -75,3 +75,5 @@ temp/
 # ChatCut upstream clone (re-fetched by scripts; pin in vendor/chatcut-agent-plugin.pin)
 vendor/chatcut-agent-plugin/
 vendor/chatcut-grok-adapted/
+
+.video_agent/

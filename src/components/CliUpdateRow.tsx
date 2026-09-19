@@ -21,6 +21,7 @@ import {
   stripAppBehindErrorPrefix,
 } from "@/lib/cliUpdateAppBehind";
 import { GlassModal } from "@/components/GlassModal";
+import { UpdatesPanel } from "@/components/UpdatesPanel";
 
 type BusyKind =
   | "check"
@@ -40,7 +41,17 @@ type ConfirmAction =
       busyKind: BusyKind;
     };
 
-export function CliUpdateRow({
+export function CliUpdateRow(props: Parameters<typeof CliChannelControls>[0]) {
+  return <>
+    <UpdatesPanel t={props.t} compact={props.compact} />
+    {!props.compact ? <details className="settings-row settings-row--stack">
+      <summary>{props.t("settings.cliChannel.switchHint")}</summary>
+      <CliChannelControls {...props} autoCheck={false} />
+    </details> : null}
+  </>;
+}
+
+function CliChannelControls({
   t,
   cliFound,
   onAfterInstall,

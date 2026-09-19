@@ -76,6 +76,9 @@ mod ssh_remote;
 mod side_browser_blob;
 mod side_browser_google_auth;
 mod side_browser_host;
+mod browser_bridge;
+#[cfg(target_os = "linux")]
+mod linux_browser;
 
 mod command_registry;
 
@@ -227,6 +230,9 @@ mod host_runtime;
 mod win_crash;
 
 mod updater;
+mod update_versions;
+mod app_update_package;
+mod signed_update_cache;
 
 mod image_thumb;
 mod video_poster;
@@ -283,6 +289,9 @@ use session_manager::SessionManager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    linux_browser::prepare_process();
+
     // Session list / continue-by-id CLI must not open a window or steal focus
     // via the single-instance plugin. Exit before any Tauri builder setup.
     if session_api::try_run_cli() {
@@ -801,6 +810,10 @@ pub fn run() {
                 let handle = app.handle().clone();
                 let session_mgr = app.state::<Arc<SessionManager>>().inner().clone();
                 tauri::async_runtime::spawn(async move {
+                    match browser_bridge::start(handle.clone()).await {
+                        Ok(bridge) => { handle.manage(bridge); }
+                        Err(error) => tracing::error!(%error, "embedded browser bridge failed to start"),
+                    }
                     match media_server::start().await {
                         Ok(h) => {
                             tracing::info!(

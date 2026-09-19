@@ -1,4 +1,5 @@
 /** Merged pt-BR message catalog by domain. */
+import { updateMessages } from "../../updates";
 import { ptBRCore } from "./core";
 import { ptBRSidebar } from "./sidebar";
 import { ptBRProject } from "./project";
@@ -28,6 +29,7 @@ import type { MessageKey } from "../en";
 
 export const ptBR: Record<MessageKey, string> = {
   ...ptBRCore,
+  ...updateMessages["pt-BR"],
   ...ptBRSidebar,
   ...ptBRProject,
   ...ptBRSession,

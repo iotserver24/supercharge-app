@@ -33,6 +33,7 @@ import {
   sideBrowserInstallDownloadHook,
   sideBrowserNavigate,
   sideBrowserReload,
+  sideBrowserSetBounds,
 } from "@/lib/api";
 import type {
   SideBrowserDownloadEvent,
@@ -138,6 +139,7 @@ const PAGE_LOAD_TIMEOUT_MS = 45_000;
 // gap can overlap the next WebView2 add_child call on Windows. Delay the close
 // briefly and cancel it when the same label is mounted again.
 const pendingCloseTimers = new Map<string, number>();
+const mountedLabels = new Map<string, symbol>();
 
 function cancelPendingClose(label: string) {
   const timer = pendingCloseTimers.get(label);
@@ -179,17 +181,6 @@ async function withTimeout<T>(
 /** How many parent elements to observe so pane/splitter moves re-sync position. */
 const ANCESTOR_OBSERVE_DEPTH = 6;
 
-type DpiMod = typeof import("@tauri-apps/api/dpi");
-
-let dpiModPromise: Promise<DpiMod> | null = null;
-
-function loadDpi(): Promise<DpiMod> {
-  if (!dpiModPromise) {
-    dpiModPromise = import("@tauri-apps/api/dpi");
-  }
-  return dpiModPromise;
-}
-
 export interface EmbeddedBrowserProps {
   url: string;
   title?: string;
@@ -209,6 +200,7 @@ export interface EmbeddedBrowserProps {
   reloadKey?: number;
   /** Notify parent chrome (side BrowserTab) when document load state changes. */
   onLoadingChange?: (loading: boolean) => void;
+  onNavigation?: (url: string) => void;
 }
 
 /** Public label scheme for automation / host commands. */
@@ -243,6 +235,7 @@ export function EmbeddedBrowser({
   instanceId,
   reloadKey = 0,
   onLoadingChange,
+  onNavigation,
 }: EmbeddedBrowserProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   // Dynamic import type — keep loose to avoid hard coupling on Tauri version.
@@ -252,6 +245,11 @@ export function EmbeddedBrowser({
   const bootUrlRef = useRef(url.trim());
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+  const errorRef = useRef<string | null>(null);
+  errorRef.current = error;
+  const onNavigationRef = useRef(onNavigation);
+  onNavigationRef.current = onNavigation;
   /**
    * Document navigation in flight — chrome progress only.
    * Never hide/show the native webview for this flag: WK/WebView2 page-load
@@ -322,6 +320,8 @@ export function EmbeddedBrowser({
           pageLoadingRef.current = false;
           setPageLoading(false);
           onLoadingChangeRef.current?.(false);
+          errorRef.current = tr("resources.browserFailed");
+          setError(errorRef.current);
         }, PAGE_LOAD_TIMEOUT_MS);
         return;
       }
@@ -334,6 +334,8 @@ export function EmbeddedBrowser({
         pageLoadingRef.current = false;
         setPageLoading(false);
         onLoadingChangeRef.current?.(false);
+        errorRef.current = tr("resources.browserFailed");
+        setError(errorRef.current);
       }, PAGE_LOAD_TIMEOUT_MS);
       return;
     }
@@ -397,6 +399,7 @@ export function EmbeddedBrowser({
     const aside = el.closest(".aside");
     const mustHide =
       !activeRef.current ||
+      !!errorRef.current ||
       coveredRef.current ||
       isAsideWebviewSuppressed(aside);
     if (mustHide) {
@@ -458,12 +461,7 @@ export function EmbeddedBrowser({
     }
 
     try {
-      const { LogicalPosition, LogicalSize } = await loadDpi();
-      // Position then size — one pair per apply; single-flight prevents interleave.
-      // When hidden (pane closed), still update bounds so the next show is correct
-      // without a second full apply — but skip show/hide thrash via lastVisibleRef.
-      await wv.setPosition(new LogicalPosition(next.x, next.y));
-      await wv.setSize(new LogicalSize(next.width, next.height));
+      await sideBrowserSetBounds(webviewLabel, next);
       lastBoundsRef.current = next;
       await setWebviewVisible(wv, wantShow);
     } catch (e) {
@@ -572,9 +570,23 @@ export function EmbeddedBrowser({
             const p = ev.payload;
             if (!p || p.label !== webviewLabel) return;
             if (p.phase === "started") {
+              errorRef.current = null;
+              setError(null);
+              currentUrlRef.current = p.url;
+              onNavigationRef.current?.(p.url);
               markPageLoading(true);
             } else if (p.phase === "finished") {
+              currentUrlRef.current = p.url;
+              onNavigationRef.current?.(p.url);
               markPageLoading(false);
+            } else if (p.phase === "failed") {
+              errorRef.current = p.error || tr("resources.browserFailed");
+              setError(errorRef.current);
+              clearPageLoadIdleTimer();
+              clearPageLoadTimeout();
+              pageLoadingRef.current = false;
+              setPageLoading(false);
+              onLoadingChangeRef.current?.(false);
             }
           },
         );
@@ -635,6 +647,11 @@ export function EmbeddedBrowser({
     let cancelled = false;
     let resizeObs: ResizeObserver | null = null;
     let io: IntersectionObserver | null = null;
+    const owner = Symbol(webviewLabel);
+    mountedLabels.set(webviewLabel, owner);
+    if (!scheduleRef.current) {
+      scheduleRef.current = createTrailingSingleFlight(() => applyBoundsRef.current());
+    }
 
     lastBoundsRef.current = null;
     lastVisibleRef.current = null;
@@ -645,11 +662,8 @@ export function EmbeddedBrowser({
       setReady(false);
       markPageLoading(true);
       try {
-        // Warm dpi module before create so first drag frames don't pay import cost.
-        void loadDpi();
         const { Webview } = await import("@tauri-apps/api/webview");
         const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const { LogicalPosition, LogicalSize } = await loadDpi();
         const win = getCurrentWindow();
 
         // Do not close before create. The host reuses a live label, which avoids
@@ -684,11 +698,7 @@ export function EmbeddedBrowser({
         );
 
         if (cancelled) {
-          try {
-            await sideBrowserClose(webviewLabel);
-          } catch {
-            /* ignore */
-          }
+          if (!mountedLabels.has(webviewLabel)) scheduleClose(webviewLabel);
           return;
         }
 
@@ -700,8 +710,7 @@ export function EmbeddedBrowser({
         webviewRef.current = webview;
         currentUrlRef.current = target;
         lastBoundsRef.current = { x, y, width: w, height: h };
-        await webview.setPosition(new LogicalPosition(x, y));
-        await webview.setSize(new LogicalSize(w, h));
+        await sideBrowserSetBounds(webviewLabel, { x, y, width: w, height: h });
         // Show as soon as the child exists — do not wait on pageLoading
         // (that path caused navigate-time hide/show flicker).
         const wantShow = activeRef.current && !coveredRef.current;
@@ -717,7 +726,7 @@ export function EmbeddedBrowser({
 
         // If URL changed during boot, navigate once (no recreate).
         const latest = bootUrlRef.current;
-        const navigatedDuringBoot = !!(latest && latest !== target);
+        const navigatedDuringBoot = !instanceId?.startsWith("agent_") && !!(latest && latest !== target);
         if (navigatedDuringBoot) {
           try {
             markPageLoading(true);
@@ -749,8 +758,12 @@ export function EmbeddedBrowser({
             ) {
               markPageLoading(false);
             }
-          } catch {
-            /* ignore — host page-load events still drive the common path */
+          } catch (e) {
+            if (!cancelled) {
+              errorRef.current = String(e);
+              setError(errorRef.current);
+              markPageLoading(false);
+            }
           }
         }
 
@@ -822,12 +835,13 @@ export function EmbeddedBrowser({
       lastVisibleRef.current = null;
       // Single delayed host close path (do not also call frontend Webview.close).
       // A same-label remount cancels this timer and reuses the existing WebView.
-      if (isTauri()) {
+      if (mountedLabels.get(webviewLabel) === owner) {
+        mountedLabels.delete(webviewLabel);
         scheduleClose(webviewLabel);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [webviewLabel]);
+  }, [webviewLabel, retryKey]);
 
   // In-place navigate when URL changes (keeps process / session / caches warm).
   useEffect(() => {
@@ -894,13 +908,13 @@ export function EmbeddedBrowser({
   useEffect(() => {
     const wv = webviewRef.current;
     if (!wv || !isTauri()) return;
-    if (!active || covered) {
+    if (!active || covered || error) {
       void setWebviewVisible(wv, false);
       return;
     }
     scheduleSync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, covered]);
+  }, [active, covered, error]);
 
   // Dispose flight only on unmount (not on url change — shared scheduleRef).
   useEffect(() => {
@@ -919,12 +933,19 @@ export function EmbeddedBrowser({
 
   const reload = () => {
     if (!isTauri()) return;
-    if (!webviewRef.current) return;
+    if (!webviewRef.current) {
+      setError(null);
+      setRetryKey((key) => key + 1);
+      return;
+    }
     void (async () => {
       try {
+        const failed = !!errorRef.current;
+        errorRef.current = null;
         setError(null);
         markPageLoading(true);
-        await sideBrowserReload(webviewLabel);
+        if (failed) await sideBrowserNavigate(webviewLabel, url.trim());
+        else await sideBrowserReload(webviewLabel);
         scheduleDownloadHookInject();
       } catch (e) {
         setError(String(e));
@@ -1072,6 +1093,9 @@ export function EmbeddedBrowser({
           <div className="rp-preview__msg" role="alert">
             <p>{tr("resources.browserFailed")}</p>
             <p className="embedded-browser__err">{error}</p>
+            <button type="button" className="btn" onClick={reload}>
+              {tr("resources.browserReload")}
+            </button>
             <button
               type="button"
               className="btn btn--primary"

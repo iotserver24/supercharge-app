@@ -1,4 +1,5 @@
 /** Merged fr message catalog by domain. */
+import { updateMessages } from "../../updates";
 import { frCore } from "./core";
 import { frSidebar } from "./sidebar";
 import { frProject } from "./project";
@@ -28,6 +29,7 @@ import type { MessageKey } from "../en";
 
 export const fr: Record<MessageKey, string> = {
   ...frCore,
+  ...updateMessages["fr"],
   ...frSidebar,
   ...frProject,
   ...frSession,

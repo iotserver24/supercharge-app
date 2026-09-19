@@ -1,4 +1,5 @@
 /** Merged en message catalog by domain. */
+import { updateMessages } from "../../updates";
 import { enCore } from "./core";
 import { enSidebar } from "./sidebar";
 import { enProject } from "./project";
@@ -26,6 +27,7 @@ import { enSettingsPet } from "./settings-pet";
 
 export const en = {
   ...enCore,
+  ...updateMessages["en"],
   ...enSidebar,
   ...enProject,
   ...enSession,

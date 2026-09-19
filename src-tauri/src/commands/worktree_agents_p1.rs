@@ -522,17 +522,8 @@ pub async fn cli_update_check() -> Result<crate::cli_update::CliUpdateCheck, Str
     .await
     .map_err(|e| e.to_string())??;
 
-    let app_ver = env!("CARGO_PKG_VERSION");
-    let (latest_app, app_update_available) =
-        match crate::app_update::check_app_update().await {
-            Ok(check) => (Some(check.latest_version), Some(check.update_available)),
-            Err(_) => (None, None),
-        };
     crate::cli_update::enrich_cli_update_check_app_compat(
-        &mut dto,
-        app_ver,
-        latest_app.as_deref(),
-        app_update_available,
+        &mut dto, env!("CARGO_PKG_VERSION"), None, None,
     );
     Ok(dto)
 }

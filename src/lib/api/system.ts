@@ -96,9 +96,10 @@ export type SideBrowserDownloadEvent = {
 
 /** Host event `side-browser://page-load` payload (loading bar UX). */
 export type SideBrowserPageLoadEvent = {
-  phase: "started" | "finished" | string;
+  phase: "started" | "finished" | "failed" | string;
   label: string;
   url: string;
+  error?: string | null;
 };
 
 /** Host event `side-browser://external-open` (Google auth handoff, #1154). */
@@ -126,6 +127,13 @@ export async function sideBrowserCreate(opts: {
     width: opts.width,
     height: opts.height,
   });
+}
+
+export async function sideBrowserSetBounds(
+  label: string,
+  bounds: { x: number; y: number; width: number; height: number },
+) {
+  return invoke<void>("side_browser_set_bounds", { label, ...bounds });
 }
 
 export async function sideBrowserClose(label: string) {
@@ -376,6 +384,8 @@ export type AppUpdateCheck = {
   /** Best-effort platform installer URL from the release assets. */
   downloadUrl: string | null;
   downloadName: string | null;
+  releaseFound?: boolean;
+  installSupported?: boolean;
 };
 
 export async function appCheckUpdate() {

@@ -4704,7 +4704,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "supercharge-app"
-version = "0.2.36"
+version = "0.2.38"
 dependencies = [
  "arboard",
  "async-stream",
@@ -4729,6 +4729,7 @@ dependencies = [
  "libc",
  "mac-notification-sys",
  "mac-usernotifications",
+ "minisign-verify",
  "notify-rust",
  "objc2",
  "parking_lot",
@@ -4740,6 +4741,7 @@ dependencies = [
  "rusqlite",
  "rustls",
  "scraper",
+ "semver",
  "serde",
  "serde_json",
  "sha1",
@@ -4765,6 +4767,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
+ "webkit2gtk",
  "webpki-roots 1.0.9",
  "webview2-com",
  "which",

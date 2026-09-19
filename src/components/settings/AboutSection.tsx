@@ -4,7 +4,6 @@
 import { useSettingsModel } from "@/providers/SettingsModelContext";
 
 import { IconHelp, IconInfo, IconSparkles } from "@/components/icons";
-import { CliUpdateRow } from "@/components/CliUpdateRow";
 import { AboutUpdateRow } from "./AboutUpdateRow";
 import { DeveloperModeSection } from "./DeveloperModeSection";
 import { requestWhatsNewOpen } from "@/lib/whatsNew";
@@ -12,7 +11,6 @@ import { requestWhatsNewOpen } from "@/lib/whatsNew";
 export function AboutSection() {
   const s = useSettingsModel();
   const {
-    cliInfo,
     onOpenProductTutorial,
     rowHighlight,
     t,
@@ -35,15 +33,6 @@ export function AboutSection() {
           </div>
         </div>
         <AboutUpdateRow t={t} />
-        <div
-          className={
-            "settings-row settings-row--stack" +
-            rowHighlight("settings-anchor-aboutCli")
-          }
-          id="settings-anchor-aboutCli"
-        >
-          <CliUpdateRow t={t} cliFound={cliInfo.found} autoCheck />
-        </div>
       </div>
       <DeveloperModeSection t={t} rowHighlight={rowHighlight} />
       <div

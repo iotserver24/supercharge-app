@@ -102,6 +102,13 @@ pub async fn side_browser_create(
 }
 
 #[tauri::command]
+pub fn side_browser_set_bounds(
+    app: AppHandle, label: String, x: f64, y: f64, width: f64, height: f64,
+) -> Result<(), String> {
+    side_browser_host::set_bounds(&app, label, x, y, width, height)
+}
+
+#[tauri::command]
 pub fn side_browser_close(app: AppHandle, label: String) -> Result<(), String> {
     side_browser_host::close(&app, label)
 }
