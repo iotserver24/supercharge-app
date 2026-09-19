@@ -51,7 +51,10 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "dmg",
         "label": "macOS Apple Silicon",
         "stable": "Grok_mac_aarch64.dmg",
-        "sources": ("Grok_{ver}_aarch64.dmg",),
+        "sources": (
+            "Supercharge_{ver}_aarch64.dmg",
+            "Grok_{ver}_aarch64.dmg",
+        ),
     },
     {
         "id": "mac-x64",
@@ -60,7 +63,10 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "dmg",
         "label": "macOS Intel",
         "stable": "Grok_mac_x64.dmg",
-        "sources": ("Grok_{ver}_x64.dmg",),
+        "sources": (
+            "Supercharge_{ver}_x64.dmg",
+            "Grok_{ver}_x64.dmg",
+        ),
     },
     {
         "id": "windows-x64",
@@ -69,7 +75,10 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "nsis",
         "label": "Windows x64",
         "stable": "Grok_windows_x64-setup.exe",
-        "sources": ("Grok_{ver}_x64-setup.exe",),
+        "sources": (
+            "Supercharge_{ver}_x64-setup.exe",
+            "Grok_{ver}_x64-setup.exe",
+        ),
     },
     {
         "id": "windows-x64-portable",
@@ -78,7 +87,10 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "portable-zip",
         "label": "Windows x64 portable",
         "stable": "Grok_windows_x64-portable.zip",
-        "sources": ("Grok_{ver}_x64-portable.zip",),
+        "sources": (
+            "Supercharge_{ver}_x64-portable.zip",
+            "Grok_{ver}_x64-portable.zip",
+        ),
     },
     {
         "id": "linux-x64-appimage",
@@ -87,7 +99,12 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "appimage",
         "label": "Linux x64 AppImage",
         "stable": "Grok_linux_x64.AppImage",
-        "sources": ("Grok_{ver}_amd64.AppImage", "Grok_{ver}_x86_64.AppImage"),
+        "sources": (
+            "Supercharge_{ver}_amd64.AppImage",
+            "Supercharge_{ver}_x86_64.AppImage",
+            "Grok_{ver}_amd64.AppImage",
+            "Grok_{ver}_x86_64.AppImage",
+        ),
     },
     {
         "id": "linux-x64-deb",
@@ -96,7 +113,12 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "deb",
         "label": "Linux x64 .deb",
         "stable": "Grok_linux_x64.deb",
-        "sources": ("Grok_{ver}_amd64.deb", "Grok_{ver}_x86_64.deb"),
+        "sources": (
+            "Supercharge_{ver}_amd64.deb",
+            "Supercharge_{ver}_x86_64.deb",
+            "Grok_{ver}_amd64.deb",
+            "Grok_{ver}_x86_64.deb",
+        ),
     },
     {
         "id": "linux-x64-rpm",
@@ -106,6 +128,10 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "label": "Linux x64 .rpm",
         "stable": "Grok_linux_x64.rpm",
         "sources": (
+            "Supercharge-{ver}-1.x86_64.rpm",
+            "Supercharge-{ver}.x86_64.rpm",
+            "Supercharge_{ver}_x86_64.rpm",
+            "Supercharge_{ver}_amd64.rpm",
             "Grok-{ver}-1.x86_64.rpm",
             "Grok-{ver}.x86_64.rpm",
             "Grok_{ver}_x86_64.rpm",
