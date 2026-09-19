@@ -11,6 +11,18 @@ See `docs/llm-wiki/release.md`.
 
 **What's New popup:** each bullet's **first sentence** is what users see. Keep that sentence to one short line (added / fixed / improved — no paths, no implementation, no issue piles). A second short sentence is allowed for GitHub / this file only. Do **not** rewrite already-shipped `## [X.Y.Z]` sections.
 
+## [0.2.39] - 2026-09-19
+
+> **Highlight:** Remote control entry points are hidden for a cleaner home and Settings.
+>
+> **中文 · 亮点：** 隐藏远程控制入口，首页和设置更清爽。
+
+### Changed
+- The Connect device shortcut and the Remote control settings are hidden while the feature is off.
+
+**中文 · 变更**
+- 远程控制功能关闭时，隐藏"连接设备"入口和远程控制设置页。
+
 ## [0.2.38] - 2026-09-19
 
 > **Highlight:** One updater keeps the app and CLI current, and the AI can drive the built-in browser live.
@@ -40,8 +52,6 @@ See `docs/llm-wiki/release.md`.
 **中文 · 修复**
 - Linux 上内置浏览器不再白屏，也不再显示在应用下方。
 - 内置浏览器加载失败时显示明确错误和重新加载按钮，不再停留空白页。
-
-## [Unreleased]
 
 ## [0.2.36] - 2026-09-18
 

@@ -12,6 +12,7 @@ import { RUNTIME_ENTRIES } from "./runtime";
 import { RUNTIME_TOOLS_ENTRIES } from "./runtimeTools";
 import { SHORTCUTS_ENTRIES } from "./shortcuts";
 import { PET_ENTRIES } from "./pet";
+import { REMOTE_CONTROL_ENABLED } from "@/lib/featureFlags";
 
 /** Full registry of searchable settings (UI rows / cards). */
 export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
@@ -25,7 +26,7 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   ...EXTENSIONS_ENTRIES,
   ...RUNTIME_ENTRIES,
   ...RUNTIME_TOOLS_ENTRIES,
-  ...REMOTE_IM_ENTRIES,
+  ...(REMOTE_CONTROL_ENABLED ? [...REMOTE_IM_ENTRIES] : []),
   ...SHORTCUTS_ENTRIES,
   ...ABOUT_ENTRIES,
 ];

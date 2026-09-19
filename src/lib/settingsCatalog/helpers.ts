@@ -4,7 +4,7 @@
 
 import type { MessageKey } from "@/i18n";
 import { SETTINGS_ENTRIES } from "./entries";
-import { SETTINGS_NAV } from "./nav";
+import { HIDDEN_SECTION_IDS, SETTINGS_NAV } from "./nav";
 import {
   SETTINGS_SECTION_IDS,
   isSettingsSectionId,
@@ -149,6 +149,7 @@ export function catalogInvariants(): string[] {
     }
   }
   for (const id of SETTINGS_SECTION_IDS) {
+    if (HIDDEN_SECTION_IDS.includes(id)) continue;
     if (!navIds.has(id)) errors.push(`section id missing from NAV: ${id}`);
   }
   const entryIds = new Set<string>();

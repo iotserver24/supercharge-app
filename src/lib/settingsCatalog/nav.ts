@@ -2,7 +2,8 @@
  * Settings primary navigation — one row per section.
  */
 
-import type { SettingsNavDef } from "./types";
+import type { SettingsNavDef, SettingsSectionId } from "./types";
+import { REMOTE_CONTROL_ENABLED } from "@/lib/featureFlags";
 
 export const SETTINGS_NAV: readonly SettingsNavDef[] = [
   {
@@ -87,17 +88,21 @@ export const SETTINGS_NAV: readonly SettingsNavDef[] = [
       { id: "privacy", labelKey: "settings.tab.privacy" },
     ],
   },
-  {
-    id: "remote_im",
-    icon: "remote_im",
-    labelKey: "settings.nav.remoteIm",
-    group: "system",
-    defaultTab: "im",
-    tabs: [
-      { id: "im", labelKey: "settings.tab.remoteIm" },
-      { id: "mirror", labelKey: "settings.tab.phoneMirror" },
-    ],
-  },
+  ...(REMOTE_CONTROL_ENABLED
+    ? ([
+        {
+          id: "remote_im",
+          icon: "remote_im",
+          labelKey: "settings.nav.remoteIm",
+          group: "system",
+          defaultTab: "im",
+          tabs: [
+            { id: "im", labelKey: "settings.tab.remoteIm" },
+            { id: "mirror", labelKey: "settings.tab.phoneMirror" },
+          ],
+        },
+      ] satisfies SettingsNavDef[])
+    : []),
   {
     id: "shortcuts",
     icon: "keyboard",
@@ -113,4 +118,8 @@ export const SETTINGS_NAV: readonly SettingsNavDef[] = [
     tabs: [],
   },
 ];
+// Sections that are valid ids but omitted from the visible nav while their
+// flag is off — catalogInvariants skips these instead of failing.
+export const HIDDEN_SECTION_IDS: readonly SettingsSectionId[] =
+  REMOTE_CONTROL_ENABLED ? [] : ["remote_im"];
 

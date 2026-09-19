@@ -4,6 +4,7 @@ import * as ts from "typescript";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createT, loadAllLocaleCatalogs } from "@/i18n";
 import {
+  HIDDEN_SECTION_IDS,
   SETTINGS_ENTRIES,
   SETTINGS_NAV,
   SETTINGS_SECTION_IDS,
@@ -82,14 +83,17 @@ describe("settingsCatalog", () => {
     expect(new Set([presets?.anchorId, catalog?.anchorId, sources?.anchorId]).size).toBe(3);
   });
 
-  it("lists each section exactly once in NAV", () => {
+  it("lists each visible section exactly once in NAV", () => {
     const ids = SETTINGS_NAV.map((n) => n.id);
-    expect(ids).toEqual([...SETTINGS_SECTION_IDS]);
+    const hidden = new Set(HIDDEN_SECTION_IDS);
+    expect(ids).toEqual(SETTINGS_SECTION_IDS.filter((id) => !hidden.has(id)));
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("registers at least one entry per section", () => {
+  it("registers at least one entry per visible section", () => {
+    const hidden = new Set(HIDDEN_SECTION_IDS);
     for (const id of SETTINGS_SECTION_IDS) {
+      if (hidden.has(id)) continue;
       expect(
         SETTINGS_ENTRIES.some((e) => e.section === id),
         `missing entries for ${id}`,
@@ -347,31 +351,28 @@ describe("settingsCatalog", () => {
     expect(appearance).toContain("settings.sessionUnreadSummary");
     expect(appearance).toContain("settings.backBottomAlways");
     expect(appearance).toContain("settings.selectionToolbar");
-    const rim = keywordKeysForSection("remote_im");
-    expect(rim).toContain("settings.nav.remoteIm");
-    expect(rim).toContain("settings.tab.remoteIm");
-    expect(rim).toContain("settings.tab.phoneMirror");
+    // Remote control is hidden behind REMOTE_CONTROL_ENABLED=false: the
+    // section contributes no search keywords while hidden.
+    expect(keywordKeysForSection("remote_im")).toEqual([]);
   });
 
-  it("remote_im has im + mirror tabs", () => {
-    expect(defaultTabFor("remote_im")).toBe("im");
-    expect(resolveTab("remote_im", "mirror")).toBe("mirror");
-    expect(resolveTab("remote_im", "feishu")).toBe("im");
+  it("remote_im is hidden from nav and search, deep links fall back", () => {
+    expect(SETTINGS_NAV.some((n) => n.id === "remote_im")).toBe(false);
+    expect(
+      SETTINGS_ENTRIES.some((e) => e.section === "remote_im"),
+    ).toBe(false);
+    expect(defaultTabFor("remote_im")).toBeNull();
+    expect(resolveTab("remote_im", "mirror")).toBeNull();
     expect(parseSettingsHash("settings/remote_im")).toEqual({
       section: "remote_im",
-      tab: "im",
+      tab: null,
     });
     expect(parseSettingsHash("settings/remote_im/mirror")).toEqual({
       section: "remote_im",
-      tab: "mirror",
-    });
-    // Legacy channel deep-link: unknown tab segment falls back to IM tab.
-    expect(parseSettingsHash("settings/remote_im/feishu")).toEqual({
-      section: "remote_im",
-      tab: "im",
+      tab: null,
     });
     expect(buildSettingsHash({ section: "remote_im", tab: "mirror" })).toBe(
-      "#/settings/remote_im/mirror",
+      "#/settings/remote_im",
     );
   });
 

@@ -4,6 +4,7 @@
  */
 
 import type { MessageKey } from "@/i18n";
+import { REMOTE_CONTROL_ENABLED } from "@/lib/featureFlags";
 
 export type PaletteActionDef = {
   /** Stable id used by the host to dispatch (e.g. `settings-general`). */
@@ -375,21 +376,25 @@ export function defaultPaletteActions(): PaletteActionDef[] {
       ],
       group: "help",
     },
-    {
-      id: "settings-remote",
-      labelKey: "settings.nav.remoteIm",
-      keywords: [
-        "settings",
-        "remote",
-        "remote control",
-        "im",
-        "mirror",
-        "phone",
-        "feishu",
-        "telegram",
-      ],
-      group: "settings",
-    },
+    ...(REMOTE_CONTROL_ENABLED
+      ? [
+          {
+            id: "settings-remote",
+            labelKey: "settings.nav.remoteIm" as MessageKey,
+            keywords: [
+              "settings",
+              "remote",
+              "remote control",
+              "im",
+              "mirror",
+              "phone",
+              "feishu",
+              "telegram",
+            ],
+            group: "settings" as const,
+          },
+        ]
+      : []),
     {
       id: "settings-shortcuts",
       labelKey: "settings.nav.shortcuts",

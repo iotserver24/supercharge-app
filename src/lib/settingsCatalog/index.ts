@@ -29,7 +29,7 @@ export {
   isSettingsSectionId,
 } from "./types";
 
-export { SETTINGS_NAV } from "./nav";
+export { HIDDEN_SECTION_IDS, SETTINGS_NAV } from "./nav";
 export { SETTINGS_ENTRIES } from "./entries";
 
 export {

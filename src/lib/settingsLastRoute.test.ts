@@ -56,13 +56,14 @@ describe("settingsLastRoute", () => {
     const storage = memoryStorage();
     expect(loadSettingsLastRoute(storage)).toBeNull();
 
-    saveSettingsLastRoute({ section: "remote_im", tab: "mirror" }, storage);
+    // remote_im/mirror would resolve tab→null while hidden; use a visible section.
+    saveSettingsLastRoute({ section: "runtime", tab: "tools" }, storage);
     expect(storage.data[SETTINGS_LAST_ROUTE_STORAGE_KEY]).toBe(
-      JSON.stringify({ section: "remote_im", tab: "mirror" }),
+      JSON.stringify({ section: "runtime", tab: "tools" }),
     );
     expect(loadSettingsLastRoute(storage)).toEqual({
-      section: "remote_im",
-      tab: "mirror",
+      section: "runtime",
+      tab: "tools",
     });
 
     saveSettingsLastRoute({ section: "shortcuts" }, storage);

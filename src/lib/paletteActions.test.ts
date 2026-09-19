@@ -37,10 +37,15 @@ describe("defaultPaletteActions", () => {
       "settings-runtime",
       "settings-workflows",
       "workflows-docs",
-      "settings-remote",
       "settings-shortcuts",
       "settings-about",
     ]);
+  });
+
+  it("hides the remote control action while REMOTE_CONTROL_ENABLED is false", () => {
+    expect(
+      defaultPaletteActions().some((a) => a.id === "settings-remote"),
+    ).toBe(false);
   });
 
   it("uses MessageKey labelKeys and non-empty keywords", () => {

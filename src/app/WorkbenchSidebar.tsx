@@ -32,6 +32,7 @@ import {
 import { createT } from "@/i18n";
 import { isDesktopHost, type CustomProvider } from "@/lib/api";
 import { openThemeEditorWindow } from "@/lib/api/system";
+import { REMOTE_CONTROL_ENABLED } from "@/lib/featureFlags";
 import {
   formatProviderBalanceLine,
   type ProviderBalanceCache,
@@ -334,7 +335,7 @@ export function WorkbenchSidebar(props: WorkbenchSidebarProps) {
             </span>
             {tr("sidebar.kanban")}
           </button>
-          {isDesktopHost() ? (
+          {isDesktopHost() && REMOTE_CONTROL_ENABLED ? (
             <button
               type="button"
               className="nav-item"
