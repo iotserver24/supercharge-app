@@ -73,14 +73,14 @@ mod wsl_backend;
 
 mod ssh_remote;
 
-mod side_browser_blob;
-mod side_browser_google_auth;
-mod side_browser_host;
 mod browser_bridge;
 #[cfg(target_os = "linux")]
 mod linux_browser;
 #[cfg(target_os = "linux")]
 mod linux_webkit;
+mod side_browser_blob;
+mod side_browser_google_auth;
+mod side_browser_host;
 
 mod command_registry;
 
@@ -231,10 +231,10 @@ mod host_runtime;
 
 mod win_crash;
 
-mod updater;
-mod update_versions;
 mod app_update_package;
 mod signed_update_cache;
+mod update_versions;
+mod updater;
 
 mod image_thumb;
 mod video_poster;

@@ -288,9 +288,19 @@ async fn execute(
         },
     );
     let mut result = execute_action(app, session_id, name, &args).await;
-    if name == "browser_open" && result.as_ref().is_ok_and(|page| page.get("url").and_then(Value::as_str) == Some("about:blank")) {
-        let error = "The browser could not load this URL. Check the address and try again.".to_string();
-        crate::side_browser_host::emit_page_error(app, &label(session_id), args.get("url").and_then(Value::as_str).unwrap_or(""), error.clone());
+    if name == "browser_open"
+        && result
+            .as_ref()
+            .is_ok_and(|page| page.get("url").and_then(Value::as_str) == Some("about:blank"))
+    {
+        let error =
+            "The browser could not load this URL. Check the address and try again.".to_string();
+        crate::side_browser_host::emit_page_error(
+            app,
+            &label(session_id),
+            args.get("url").and_then(Value::as_str).unwrap_or(""),
+            error.clone(),
+        );
         result = Err(error);
     }
     activity(

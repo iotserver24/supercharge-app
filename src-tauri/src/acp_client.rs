@@ -1168,9 +1168,16 @@ impl AcpClient {
     }
 
     pub fn bind_browser_session(&self, session_id: &str) {
-        if !self.owns_local_process_tree || self.empty_mcp_servers { return; }
+        if !self.owns_local_process_tree || self.empty_mcp_servers {
+            return;
+        }
         let mut binding = self.browser_binding.lock();
-        if binding.as_ref().is_some_and(|b| b.session_id() == session_id) { return; }
+        if binding
+            .as_ref()
+            .is_some_and(|b| b.session_id() == session_id)
+        {
+            return;
+        }
         match crate::browser_bridge::bind(session_id) {
             Ok(next) => *binding = Some(next),
             Err(error) => warn!(%error, "in-app browser tools unavailable for session"),
@@ -2331,9 +2338,16 @@ impl AcpClient {
             servers
         };
 
-        if let Some(entry) = self.browser_binding.lock().as_ref().and_then(|binding| binding.entry()) {
+        if let Some(entry) = self
+            .browser_binding
+            .lock()
+            .as_ref()
+            .and_then(|binding| binding.entry())
+        {
             if let Some(servers) = mcp_servers.as_array_mut() {
-                servers.retain(|server| server.get("name").and_then(Value::as_str) != Some("supercharge-browser"));
+                servers.retain(|server| {
+                    server.get("name").and_then(Value::as_str) != Some("supercharge-browser")
+                });
                 servers.push(entry);
             }
         }
@@ -2541,9 +2555,16 @@ impl AcpClient {
         session_id: &str,
         mut mcp_servers: Value,
     ) -> Result<Value, String> {
-        if let Some(entry) = self.browser_binding.lock().as_ref().and_then(|binding| binding.entry()) {
+        if let Some(entry) = self
+            .browser_binding
+            .lock()
+            .as_ref()
+            .and_then(|binding| binding.entry())
+        {
             if let Some(servers) = mcp_servers.as_array_mut() {
-                servers.retain(|server| server.get("name").and_then(Value::as_str) != Some("supercharge-browser"));
+                servers.retain(|server| {
+                    server.get("name").and_then(Value::as_str) != Some("supercharge-browser")
+                });
                 servers.push(entry);
             }
         }

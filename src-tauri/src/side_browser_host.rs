@@ -126,12 +126,25 @@ pub(crate) fn emit_page_load(app: &AppHandle, phase: &str, label: &str, url: &st
 
 pub(crate) fn emit_page_error(app: &AppHandle, label: &str, url: &str, error: String) {
     PAGE_STATES.lock().insert(label.into(), Err(error.clone()));
-    let _ = app.emit(PAGE_LOAD_EVENT, SideBrowserPageLoadPayload {
-        phase: "failed".into(), label: label.into(), url: url.into(), error: Some(error),
-    });
+    let _ = app.emit(
+        PAGE_LOAD_EVENT,
+        SideBrowserPageLoadPayload {
+            phase: "failed".into(),
+            label: label.into(),
+            url: url.into(),
+            error: Some(error),
+        },
+    );
 }
 
-pub fn set_bounds(app: &AppHandle, label: String, x: f64, y: f64, width: f64, height: f64) -> Result<(), String> {
+pub fn set_bounds(
+    app: &AppHandle,
+    label: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
     validate_side_label(&label)?;
     if [x, y, width, height].iter().any(|v| !v.is_finite()) || width < 1.0 || height < 1.0 {
         return Err("invalid side browser bounds".into());
@@ -140,10 +153,12 @@ pub fn set_bounds(app: &AppHandle, label: String, x: f64, y: f64, width: f64, he
     #[cfg(target_os = "linux")]
     return crate::linux_browser::set_bounds(&webview, x, y, width, height);
     #[cfg(not(target_os = "linux"))]
-    webview.set_bounds(tauri::Rect {
-        position: LogicalPosition::new(x, y).into(),
-        size: LogicalSize::new(width, height).into(),
-    }).map_err(|e| format!("side browser bounds: {e}"))
+    webview
+        .set_bounds(tauri::Rect {
+            position: LogicalPosition::new(x, y).into(),
+            size: LogicalSize::new(width, height).into(),
+        })
+        .map_err(|e| format!("side browser bounds: {e}"))
 }
 
 fn validate_label(label: &str) -> Result<(), String> {
@@ -370,7 +385,10 @@ pub fn create(
         // The agent owns navigation for its tab; UI reattachment must not undo
         // a click or history transition with a previously observed URL.
         let should_navigate = !label.starts_with("resource-browser-agent_")
-            && existing.url().map(|current| current != parsed).unwrap_or(true);
+            && existing
+                .url()
+                .map(|current| current != parsed)
+                .unwrap_or(true);
         if should_navigate {
             if handoff_google_auth_externally(app, &label, &parsed) {
                 return Ok(());

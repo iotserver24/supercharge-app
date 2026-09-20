@@ -1,6 +1,6 @@
 pkgbase = supercharge-app-bin
 	pkgdesc = Supercharge desktop workbench for local coding agents
-	pkgver = 0.2.40
+	pkgver = 0.2.41
 	pkgrel = 1
 	url = https://github.com/iotserver24/supercharge-app
 	arch = x86_64
@@ -13,7 +13,7 @@ pkgbase = supercharge-app-bin
 	provides = supercharge-app
 	conflicts = supercharge-app
 	options = !strip
-	source = Supercharge-0.2.40-1-x86_64.pkg.tar.zst::https://github.com/iotserver24/supercharge-app/releases/download/v0.2.40/Supercharge-0.2.40-1-x86_64.pkg.tar.zst
+	source = Supercharge-0.2.41-1-x86_64.pkg.tar.zst::https://github.com/iotserver24/supercharge-app/releases/download/v0.2.41/Supercharge-0.2.41-1-x86_64.pkg.tar.zst
 	sha256sums = SKIP
 
 pkgname = supercharge-app-bin

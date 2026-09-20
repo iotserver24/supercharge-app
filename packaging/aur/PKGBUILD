@@ -1,6 +1,6 @@
 # Maintainer: Supercharge contributors
 pkgname=supercharge-app-bin
-pkgver=0.2.40
+pkgver=0.2.41
 pkgrel=1
 pkgdesc="Supercharge desktop workbench for local coding agents"
 arch=('x86_64')

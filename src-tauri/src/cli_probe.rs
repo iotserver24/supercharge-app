@@ -356,11 +356,36 @@ fn binary_names() -> &'static [&'static str] {
     }
 }
 
+fn comparable_executable_path(path: &Path, case_insensitive: bool) -> String {
+    let resolved = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let mut value = resolved.to_string_lossy().replace('\\', "/");
+    if case_insensitive {
+        if let Some(without_verbatim_prefix) = value.strip_prefix("//?/") {
+            value = without_verbatim_prefix.to_string();
+        }
+        value.make_ascii_lowercase();
+    }
+    value.trim_end_matches('/').to_string()
+}
+
+fn is_same_executable_path(candidate: &Path, current: &Path, case_insensitive: bool) -> bool {
+    comparable_executable_path(candidate, case_insensitive)
+        == comparable_executable_path(current, case_insensitive)
+}
+
+fn remove_current_executable(
+    candidates: &mut Vec<PathBuf>,
+    current: &Path,
+    case_insensitive: bool,
+) {
+    candidates.retain(|candidate| !is_same_executable_path(candidate, current, case_insensitive));
+}
+
 fn push_unique(out: &mut Vec<PathBuf>, seen: &mut std::collections::HashSet<String>, p: PathBuf) {
     if p.as_os_str().is_empty() {
         return;
     }
-    // Normalize for dedupe (Windows is case-insensitive)
+    // Normalize for dedupe (Windows is case-insensitive).
     let key = {
         #[cfg(target_os = "windows")]
         {
@@ -547,6 +572,14 @@ fn candidate_paths_with_env(
     // 5) PATH / which (process + enriched)
     for p in which_supercharge_variants() {
         push_unique(&mut out, &mut seen, p);
+    }
+
+    // Windows paths are case-insensitive: the desktop binary `Supercharge.exe`
+    // otherwise matches the CLI candidate `supercharge.exe` in its own folder.
+    // Probing that candidate with `--version` launches another desktop instance,
+    // which recursively probes and produces the observed open/close loop.
+    if let Ok(current) = std::env::current_exe() {
+        remove_current_executable(&mut out, &current, cfg!(target_os = "windows"));
     }
 
     out
@@ -936,6 +969,22 @@ mod tests {
             !c.iter().any(|path| is_legacy_grok_binary_path(path)),
             "one-binary probe must not include a Grok runtime: {c:?}"
         );
+    }
+
+    #[test]
+    fn windows_path_comparison_excludes_desktop_self_case_insensitively() {
+        let current = Path::new(r"C:\Program Files\Supercharge\Supercharge.exe");
+        let same_cli_spelling = Path::new(r"c:\program files\supercharge\supercharge.exe");
+        assert!(is_same_executable_path(same_cli_spelling, current, true));
+        assert!(!is_same_executable_path(same_cli_spelling, current, false));
+
+        let mut candidates = vec![
+            same_cli_spelling.to_path_buf(),
+            PathBuf::from(r"C:\Users\me\.supercharge\bin\supercharge.exe"),
+        ];
+        remove_current_executable(&mut candidates, current, true);
+        assert_eq!(candidates.len(), 1);
+        assert!(candidates[0].to_string_lossy().contains(".supercharge"));
     }
 
     #[test]

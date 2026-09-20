@@ -4,10 +4,9 @@
 //! new `// ── Domain ──` section rather than appending at a random spot.
 
 use crate::{
-    app_update_package, signed_update_cache,
-    cli_worktrees, commands, desktop_notify, git_pr_hub, leader, mirror, os_theme, pet_window,
-    remote_im, serve, session_api, ssh_remote, system_fonts, theme_editor_window, tray, updater,
-    wallpaper_remote_commands,
+    app_update_package, cli_worktrees, commands, desktop_notify, git_pr_hub, leader, mirror,
+    os_theme, pet_window, remote_im, serve, session_api, signed_update_cache, ssh_remote,
+    system_fonts, theme_editor_window, tray, updater, wallpaper_remote_commands,
 };
 
 /// Single invoke handler consumed by `Builder::invoke_handler` in `run()`.
