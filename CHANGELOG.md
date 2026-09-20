@@ -11,6 +11,14 @@ See `docs/llm-wiki/release.md`.
 
 **What's New popup:** each bullet's **first sentence** is what users see. Keep that sentence to one short line (added / fixed / improved — no paths, no implementation, no issue piles). A second short sentence is allowed for GitHub / this file only. Do **not** rewrite already-shipped `## [X.Y.Z]` sections.
 
+## [Unreleased]
+
+### Fixed
+- New project chats now inherit configured extra folders.
+- Detached extra folders stay detached after reconnecting.
+- Deleted chats no longer return through CLI session import.
+- Archive dialogs now clarify that terminal CLI sessions remain available.
+
 ## [0.2.41] - 2026-09-20
 
 > **Highlight:** Windows no longer relaunches the desktop app while looking for the CLI.

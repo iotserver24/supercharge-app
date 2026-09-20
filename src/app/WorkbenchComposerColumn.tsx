@@ -58,6 +58,7 @@ import { ComposerModelMenu } from "@/components/ComposerModelMenu";
 import { WorkbenchComposerShell } from "@/app/WorkbenchComposerShell";
 import { MultiRootWorkspaceModal } from "@/components/MultiRootWorkspaceModal";
 import { useMultiRootWorkspace } from "@/hooks/useMultiRootWorkspace";
+import { isBoundWorkspaceId } from "@/lib/multiRootWorkspace";
 
 export type WorkbenchComposerColumnProps = {
   activeProject: Project | null;
@@ -666,14 +667,17 @@ export function WorkbenchComposerColumn(p: WorkbenchComposerColumnProps) {
                   onManageWorkspace={
                     activeProject && !activeProject.sshAlias
                       ? () => {
+                          const rawWid = (
+                            session as { workspaceId?: string | null }
+                          ).workspaceId;
                           void multiRoot.openFor({
                             projectId: activeProject.id,
                             projectName: projectDisplayName(activeProject, tr),
                             projectPath: activeProject.path,
                             sessionId: session.sessionId,
-                            workspaceId:
-                              (session as { workspaceId?: string | null })
-                                .workspaceId ?? null,
+                            workspaceId: isBoundWorkspaceId(rawWid)
+                              ? (rawWid ?? null)
+                              : null,
                           });
                         }
                       : undefined
