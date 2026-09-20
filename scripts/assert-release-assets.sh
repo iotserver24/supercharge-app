@@ -84,6 +84,7 @@ REQUIRED=(
   "Supercharge_${VER}_amd64.AppImage"
   "Supercharge_${VER}_amd64.deb"
   "Supercharge-${VER}-1.x86_64.rpm|Supercharge-${VER}.x86_64.rpm|Supercharge_${VER}_x86_64.rpm|Supercharge_${VER}_amd64.rpm"
+  "Supercharge-${VER}-1-x86_64.pkg.tar.zst"
 )
 
 missing=()
@@ -109,7 +110,7 @@ if [[ ${#missing[@]} -gt 0 ]]; then
   for m in "${missing[@]}"; do
     echo "  - $m" >&2
   done
-  echo "All of macOS (arm+x64), Windows (setup+portable), and Linux (AppImage/deb/rpm) must upload before the release is done." >&2
+  echo "All of macOS (arm+x64), Windows (setup+portable), and Linux (AppImage/deb/rpm/Arch package) must upload before the release is done." >&2
   exit 1
 fi
 

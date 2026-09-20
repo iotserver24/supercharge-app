@@ -11,6 +11,17 @@ See `docs/llm-wiki/release.md`.
 
 **What's New popup:** each bullet's **first sentence** is what users see. Keep that sentence to one short line (added / fixed / improved — no paths, no implementation, no issue piles). A second short sentence is allowed for GitHub / this file only. Do **not** rewrite already-shipped `## [X.Y.Z]` sections.
 
+## [0.2.40] - 2026-09-20
+
+> **Highlight:** Linux startup is safer, including AppImage and Arch systems.
+
+### Added
+- Arch Linux users can install a native package that uses the system WebKit runtime.
+
+### Fixed
+- Linux no longer limits the safe WebKit renderer to Wayland, preventing blank startup windows on affected X11 and AppImage systems.
+- AppImage startup now activates the existing system-WebKit fallback when WebKitGTK 4.1 is installed.
+
 ## [0.2.39] - 2026-09-19
 
 > **Highlight:** Remote control entry points are hidden for a cleaner home and Settings.

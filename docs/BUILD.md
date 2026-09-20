@@ -96,7 +96,9 @@ Issue [#539](https://github.com/RongleCat/grok-app/issues/539) 对照实验：�
 用户侧缓解：各 README 的「Linux blank/black window」段，或仓库脚本  
 `scripts/run-linux-appimage-system-webkit.sh`。
 
-AppImage 宿主进程在启动时若检测到系统 WebKitGTK 4.1，会带 `WEBKIT_EXEC_PATH` / `LD_LIBRARY_PATH` 再 exec 自身（`src-tauri/src/linux_webkit.rs`）。这覆盖 #539 黑屏，也避免退出时 FUSE 卸载仍映射在 squashfs 上的 `WebKitNetworkProcess`（SIGBUS / `BUS_ADRERR`）。`GROK_SKIP_SYSTEM_WEBKIT=1` 可退回内置 WebKit。不要为了此问题单独把 Linux CI 升到 Ubuntu 24.04——会抬高 glibc 底线。
+AppImage 宿主进程在启动时若检测到系统 WebKitGTK 4.1，会带 `WEBKIT_EXEC_PATH` / `LD_LIBRARY_PATH` 再 exec 自身（`src-tauri/src/linux_webkit.rs`）。这覆盖 #539 黑屏，也避免退出时 FUSE 卸载仍映射在 squashfs 上的 `WebKitNetworkProcess`（SIGBUS / `BUS_ADRERR`）。Linux 启动还默认设置 `WEBKIT_DISABLE_DMABUF_RENDERER=1`（X11 与 Wayland）；用户显式设置该变量时保持用户值。`GROK_SKIP_SYSTEM_WEBKIT=1` 可退回内置 WebKit。不要为了此问题单独把 Linux CI 升到 Ubuntu 24.04——会抬高 glibc 底线。
+
+发布流程也生成 `Supercharge-<version>-1-x86_64.pkg.tar.zst`，供 Arch/Manjaro 直接安装并链接系统 WebKitGTK。`packaging/aur/PKGBUILD` / `.SRCINFO` 是 AUR `supercharge-app-bin` 元数据；正式 AUR 推送仍要求维护者的 AUR SSH 账号与密钥。
 
 ## 2. 本地构建命令
 

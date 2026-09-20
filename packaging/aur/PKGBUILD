@@ -1,0 +1,19 @@
+# Maintainer: Supercharge contributors
+pkgname=supercharge-app-bin
+pkgver=0.2.40
+pkgrel=1
+pkgdesc="Supercharge desktop workbench for local coding agents"
+arch=('x86_64')
+url="https://github.com/iotserver24/supercharge-app"
+license=('MIT')
+provides=('supercharge-app')
+conflicts=('supercharge-app')
+options=('!strip')
+depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator' 'librsvg' 'openssl')
+source=("Supercharge-${pkgver}-1-x86_64.pkg.tar.zst::${url}/releases/download/v${pkgver}/Supercharge-${pkgver}-1-x86_64.pkg.tar.zst")
+sha256sums=('SKIP')
+
+package() {
+  bsdtar -xf "${srcdir}/Supercharge-${pkgver}-1-x86_64.pkg.tar.zst" -C "${pkgdir}"
+  rm -f "${pkgdir}/.PKGINFO"
+}

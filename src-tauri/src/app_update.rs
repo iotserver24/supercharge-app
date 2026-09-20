@@ -129,6 +129,7 @@ fn desktop_asset(name: &str) -> bool {
             ".appimage",
             ".deb",
             ".rpm",
+            ".pkg.tar.zst",
             "-setup.exe",
             ".msi",
             ".app.tar.gz",
@@ -150,6 +151,7 @@ fn platform_matches(name: &str, os: &str, arch: &str) -> bool {
             lower.ends_with(".appimage")
                 || lower.ends_with(".deb")
                 || lower.ends_with(".rpm")
+                || lower.ends_with(".pkg.tar.zst")
                 || lower == format!("supercharge-app-linux-{arch}")
         }
     }
@@ -692,6 +694,7 @@ mod tests {
             gh_asset("Supercharge_0.2.36_aarch64.dmg"),
             gh_asset("Supercharge_0.2.36_amd64.AppImage"),
             gh_asset("Supercharge_0.2.36_amd64.deb"),
+            gh_asset("Supercharge-0.2.36-1-x86_64.pkg.tar.zst"),
             gh_asset("Supercharge_0.2.36_x64-setup.exe"),
             gh_asset("Supercharge_0.2.36_x64.dmg"),
             gh_asset("Supercharge_aarch64.app.tar.gz"),
@@ -705,12 +708,12 @@ mod tests {
         assert!(linux_url
             .unwrap()
             .ends_with("/Supercharge_0.2.36_amd64.AppImage"));
-        let (win_url, win_name) = pick_platform_asset_for("windows", "x86_64", Some(&assets));
+        let (_win_url, win_name) = pick_platform_asset_for("windows", "x86_64", Some(&assets));
         assert_eq!(
             win_name.as_deref(),
             Some("Supercharge_0.2.36_x64-setup.exe")
         );
-        let (mac_arm_url, mac_arm_name) =
+        let (_mac_arm_url, mac_arm_name) =
             pick_platform_asset_for("macos", "aarch64", Some(&assets));
         assert_eq!(
             mac_arm_name.as_deref(),

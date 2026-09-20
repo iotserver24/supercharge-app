@@ -79,6 +79,8 @@ mod side_browser_host;
 mod browser_bridge;
 #[cfg(target_os = "linux")]
 mod linux_browser;
+#[cfg(target_os = "linux")]
+mod linux_webkit;
 
 mod command_registry;
 
@@ -298,9 +300,18 @@ pub fn run() {
         std::process::exit(session_api::run_cli());
     }
 
+    #[cfg(target_os = "linux")]
+    linux_webkit::maybe_reexec_for_system_webkit();
+
     let _ = paths::ensure_app_dirs();
 
     logging::init();
+
+    #[cfg(target_os = "linux")]
+    {
+        linux_browser::log_renderer_choice();
+        linux_webkit::log_system_webkit_choice();
+    }
 
     crate::host_runtime::on_process_start();
     crate::win_crash::install();
@@ -1092,6 +1103,9 @@ pub fn run() {
                 pet_window::persist_pet_window_pos(app);
 
                 crate::host_runtime::on_process_shutdown();
+
+                #[cfg(target_os = "linux")]
+                linux_webkit::wait_for_appimage_webkit_helpers();
 
                 if let Some(host) = app.try_state::<Arc<MirrorHost>>() {
 

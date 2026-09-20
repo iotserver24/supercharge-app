@@ -1,7 +1,7 @@
 # Build & publish desktop installers:
 #   macOS ARM / Intel (.dmg)
 #   Windows x64 NSIS setup + portable zip (绿色版)
-#   Linux x64 AppImage / .deb / .rpm (Ubuntu/Debian + Fedora/RHEL family)
+#   Linux x64 AppImage / .deb / .rpm / .pkg.tar.zst (Arch family)
 # Trigger: push tag v*  (e.g. v0.1.1)  or manual workflow_dispatch.
 #
 # Prerequisites (repo Settings → Actions → General → Workflow permissions):
@@ -100,6 +100,7 @@ jobs:
             libssl-dev \
             rpm \
             file
+            zstd
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -295,7 +296,7 @@ jobs:
           projectPath: .
           # Prefer the pushed git tag; fallback replaces __VERSION__ from tauri.conf.json
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
-          releaseName: "Grok App v__VERSION__"
+          releaseName: "Supercharge v__VERSION__"
           releaseBody: ${{ env.RELEASE_BODY }}
           releaseDraft: false
           prerelease: false
@@ -353,6 +354,24 @@ jobs:
           cp "$SRC_SIG" "$OUT_SIG"
           echo "Uploading $OUT_TAR (+ .sig) to $TAG"
           gh release upload "$TAG" "$OUT_TAR" "$OUT_SIG" --clobber
+
+      - name: Build and upload Arch Linux package
+        if: matrix.platform == 'ubuntu-22.04'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="v$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')"
+          fi
+          VER="${TAG#v}"
+          DEB="src-tauri/target/release/bundle/deb/Supercharge_${VER}_amd64.deb"
+          bash scripts/package-arch-linux.sh "$TAG" "$DEB"
+          gh release upload "$TAG" "Supercharge-${VER}-1-x86_64.pkg.tar.zst" --clobber
 
       # 绿色版：免安装 zip（单文件 exe + 说明）。WebView2 仍由系统提供。
       - name: Windows portable zip (绿色版)
@@ -463,8 +482,7 @@ jobs:
           rm -f SHA256SUMS
           # Re-assert before aliases — Windows setup/portable must be on disk.
           bash "${GITHUB_WORKSPACE}/scripts/assert-release-assets.sh" "$TAG" --repo "$GITHUB_REPOSITORY"
-          # Stable aliases (Grok_mac_x64.dmg, Grok_windows_x64-setup.exe, …)
-          # + downloads.json for grok-app.com. Files stay on GitHub Releases.
+          # Stable Supercharge aliases + downloads.json. Files stay on GitHub Releases.
           python3 "${GITHUB_WORKSPACE}/scripts/publish-website-downloads.py" \
             --dir /tmp/release-assets \
             --tag "$TAG" \

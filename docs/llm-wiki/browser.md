@@ -8,7 +8,7 @@ Tauri 2.11 / Wry 0.55 packs Linux child WebViews into the window's vertical `Gtk
 
 `linux_browser.rs` reparents browser children into a `GtkOverlay` over the main WebView. The main WebView retains the full client area. `side_browser_set_bounds` positions each browser overlay using the frontend host rectangle. Other platforms use Tauri's native bounds API. Do not restore direct frontend `setPosition` / `setSize` calls for these views.
 
-Before Tauri starts on Wayland, the app defaults `WEBKIT_DISABLE_DMABUF_RENDERER=1`. An explicit environment override is respected; X11 is not changed. This avoids a reproduced WebKit DMA-BUF Wayland protocol failure without disabling the browser sandbox.
+Before Tauri starts on Linux, the app defaults `WEBKIT_DISABLE_DMABUF_RENDERER=1` on both Wayland and X11. An explicit environment override is respected. AppImage startup also invokes `linux_webkit::maybe_reexec_for_system_webkit`; when WebKitGTK 4.1 exists on the host, it re-execs against those host libraries and helper processes. Together these avoid the DMA-BUF/EGL blank-window class without disabling the browser sandbox.
 
 Native surfaces are hidden under app overlays and when their pane is inactive. Navigation does not destroy the browser. Page-load errors show a retry action. Wry drops evaluation callbacks queued before a first document commit, so host evaluation waits for page readiness off the UI thread.
 

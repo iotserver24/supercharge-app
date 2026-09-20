@@ -1,0 +1,19 @@
+pkgbase = supercharge-app-bin
+	pkgdesc = Supercharge desktop workbench for local coding agents
+	pkgver = 0.2.40
+	pkgrel = 1
+	url = https://github.com/iotserver24/supercharge-app
+	arch = x86_64
+	license = MIT
+	depends = webkit2gtk-4.1
+	depends = gtk3
+	depends = libayatana-appindicator
+	depends = librsvg
+	depends = openssl
+	provides = supercharge-app
+	conflicts = supercharge-app
+	options = !strip
+	source = Supercharge-0.2.40-1-x86_64.pkg.tar.zst::https://github.com/iotserver24/supercharge-app/releases/download/v0.2.40/Supercharge-0.2.40-1-x86_64.pkg.tar.zst
+	sha256sums = SKIP
+
+pkgname = supercharge-app-bin

@@ -11,18 +11,23 @@ thread_local! {
 }
 
 pub fn prepare_process() {
-    if needs_software_buffers(
-        std::env::var_os("WAYLAND_DISPLAY").is_some(),
-        std::env::var("GDK_BACKEND").ok().as_deref(),
-        std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_some(),
-    ) {
-        // WebKit's DMA-BUF path can abort the Wayland connection before first paint.
-        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    let current = std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER");
+    if let Some(value) = renderer_override(current) {
+        // DMA-BUF driver incompatibilities also affect X11 and bundled AppImage WebKit.
+        // Apply before WebKit starts, without changing its sandbox or an explicit override.
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", value);
     }
 }
 
-fn needs_software_buffers(wayland: bool, backend: Option<&str>, overridden: bool) -> bool {
-    wayland && backend != Some("x11") && !overridden
+fn renderer_override(current: Option<std::ffi::OsString>) -> Option<&'static str> {
+    current.is_none().then_some("1")
+}
+
+pub fn log_renderer_choice() {
+    tracing::info!(
+        value = ?std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER"),
+        "Linux WebKit DMA-BUF renderer setting"
+    );
 }
 
 pub fn attach(webview: &Webview, x: f64, y: f64, width: f64, height: f64) -> Result<(), String> {
@@ -138,11 +143,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn wayland_uses_safe_buffers_unless_explicitly_overridden() {
-        assert!(needs_software_buffers(true, None, false));
-        assert!(needs_software_buffers(true, Some("wayland"), false));
-        assert!(!needs_software_buffers(true, Some("x11"), false));
-        assert!(!needs_software_buffers(false, None, false));
-        assert!(!needs_software_buffers(true, None, true));
+    fn renderer_safeguard_defaults_on_all_linux_display_backends() {
+        // Display backend and package format deliberately do not participate:
+        // AppImage/X11 hit the same WebKit DMA-BUF blank-screen class as Wayland.
+        assert_eq!(renderer_override(None), Some("1"));
+    }
+
+    #[test]
+    fn explicit_renderer_override_is_preserved() {
+        for value in ["0", "1", ""] {
+            assert_eq!(renderer_override(Some(value.into())), None);
+        }
     }
 }

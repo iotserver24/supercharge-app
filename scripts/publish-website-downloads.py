@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Stable installer aliases + downloads.json for grok-app.com.
+"""Stable Supercharge installer aliases + downloads.json for release clients.
 
-The future official site must not host DMG/EXE (traffic cost). Buttons point at
+The official site must not host DMG/EXE (traffic cost). Buttons point at
 GitHub Releases. Versioned asset names include the semver, so this script also
 publishes unchanging aliases:
 
-  https://github.com/<repo>/releases/latest/download/Grok_mac_x64.dmg
-  https://github.com/<repo>/releases/latest/download/Grok_windows_x64-setup.exe
+  https://github.com/<repo>/releases/latest/download/Supercharge_mac_x64.dmg
+  https://github.com/<repo>/releases/latest/download/Supercharge_windows_x64-setup.exe
 
 Usage (CI, after versioned assets are on the tag):
   python3 scripts/publish-website-downloads.py \\
-    --dir /tmp/release-assets --tag v0.2.20 --repo RongleCat/grok-app --write-aliases
+    --dir /tmp/release-assets --tag v0.2.20 --repo iotserver24/supercharge-app --write-aliases
 
   python3 scripts/publish-website-downloads.py --self-test
 """
@@ -27,8 +27,8 @@ from pathlib import Path
 from typing import Any
 
 SCHEMA_VERSION = 1
-PRODUCT = "Grok App"
-OFFICIAL_SITE = "https://grok-app.com"
+PRODUCT = "Supercharge"
+OFFICIAL_SITE = "https://github.com/iotserver24/supercharge-app"
 DOWNLOADS_JSON_NAME = "downloads.json"
 
 # Every official installer must exist or the job fails (no half-built Latest).
@@ -40,6 +40,7 @@ REQUIRED_IDS = (
     "linux-x64-appimage",
     "linux-x64-deb",
     "linux-x64-rpm",
+    "linux-x64-arch",
 )
 
 # source_names: first existing file wins. `{ver}` is the tag without leading v.
@@ -50,7 +51,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "arch": "aarch64",
         "kind": "dmg",
         "label": "macOS Apple Silicon",
-        "stable": "Grok_mac_aarch64.dmg",
+        "stable": "Supercharge_mac_aarch64.dmg",
         "sources": (
             "Supercharge_{ver}_aarch64.dmg",
             "Grok_{ver}_aarch64.dmg",
@@ -62,7 +63,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "arch": "x64",
         "kind": "dmg",
         "label": "macOS Intel",
-        "stable": "Grok_mac_x64.dmg",
+        "stable": "Supercharge_mac_x64.dmg",
         "sources": (
             "Supercharge_{ver}_x64.dmg",
             "Grok_{ver}_x64.dmg",
@@ -74,7 +75,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "arch": "x64",
         "kind": "nsis",
         "label": "Windows x64",
-        "stable": "Grok_windows_x64-setup.exe",
+        "stable": "Supercharge_windows_x64-setup.exe",
         "sources": (
             "Supercharge_{ver}_x64-setup.exe",
             "Grok_{ver}_x64-setup.exe",
@@ -86,7 +87,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "arch": "x64",
         "kind": "portable-zip",
         "label": "Windows x64 portable",
-        "stable": "Grok_windows_x64-portable.zip",
+        "stable": "Supercharge_windows_x64-portable.zip",
         "sources": (
             "Supercharge_{ver}_x64-portable.zip",
             "Grok_{ver}_x64-portable.zip",
@@ -98,7 +99,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "arch": "x64",
         "kind": "appimage",
         "label": "Linux x64 AppImage",
-        "stable": "Grok_linux_x64.AppImage",
+        "stable": "Supercharge_linux_x64.AppImage",
         "sources": (
             "Supercharge_{ver}_amd64.AppImage",
             "Supercharge_{ver}_x86_64.AppImage",
@@ -112,7 +113,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "arch": "x64",
         "kind": "deb",
         "label": "Linux x64 .deb",
-        "stable": "Grok_linux_x64.deb",
+        "stable": "Supercharge_linux_x64.deb",
         "sources": (
             "Supercharge_{ver}_amd64.deb",
             "Supercharge_{ver}_x86_64.deb",
@@ -126,7 +127,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "arch": "x64",
         "kind": "rpm",
         "label": "Linux x64 .rpm",
-        "stable": "Grok_linux_x64.rpm",
+        "stable": "Supercharge_linux_x64.rpm",
         "sources": (
             "Supercharge-{ver}-1.x86_64.rpm",
             "Supercharge-{ver}.x86_64.rpm",
@@ -137,6 +138,15 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
             "Grok_{ver}_x86_64.rpm",
             "Grok_{ver}_amd64.rpm",
         ),
+    },
+    {
+        "id": "linux-x64-arch",
+        "os": "linux",
+        "arch": "x64",
+        "kind": "pacman",
+        "label": "Arch Linux x64",
+        "stable": "Supercharge_linux_x64.pkg.tar.zst",
+        "sources": ("Supercharge-{ver}-1-x86_64.pkg.tar.zst",),
     },
 )
 
@@ -264,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dir", type=Path, help="Directory of downloaded release assets")
     parser.add_argument("--tag", help="Release tag, e.g. v0.2.20")
-    parser.add_argument("--repo", default="RongleCat/grok-app", help="owner/name")
+    parser.add_argument("--repo", default="iotserver24/supercharge-app", help="owner/name")
     parser.add_argument(
         "--write-aliases",
         action="store_true",
@@ -314,13 +324,14 @@ class WebsiteDownloadsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             samples = {
-                "Grok_0.2.20_aarch64.dmg": b"arm-dmg",
-                "Grok_0.2.20_x64.dmg": b"intel-dmg",
-                "Grok_0.2.20_x64-setup.exe": b"win-setup",
-                "Grok_0.2.20_x64-portable.zip": b"win-zip",
-                "Grok_0.2.20_amd64.AppImage": b"appimage",
-                "Grok_0.2.20_amd64.deb": b"deb",
-                "Grok-0.2.20-1.x86_64.rpm": b"rpm",
+                "Supercharge_0.2.20_aarch64.dmg": b"arm-dmg",
+                "Supercharge_0.2.20_x64.dmg": b"intel-dmg",
+                "Supercharge_0.2.20_x64-setup.exe": b"win-setup",
+                "Supercharge_0.2.20_x64-portable.zip": b"win-zip",
+                "Supercharge_0.2.20_amd64.AppImage": b"appimage",
+                "Supercharge_0.2.20_amd64.deb": b"deb",
+                "Supercharge-0.2.20-1.x86_64.rpm": b"rpm",
+                "Supercharge-0.2.20-1-x86_64.pkg.tar.zst": b"arch",
                 "Grok_0.2.20_x64.dmg.sig": b"ignore-me",
             }
             for name, body in samples.items():
@@ -329,27 +340,32 @@ class WebsiteDownloadsTests(unittest.TestCase):
             payload = build_manifest(
                 root,
                 tag="v0.2.20",
-                repo="RongleCat/grok-app",
+                repo="iotserver24/supercharge-app",
                 write_aliases=True,
             )
             installers = payload["manifest"]["installers"]
             self.assertEqual(
                 installers["mac-x64"]["url"],
-                "https://github.com/RongleCat/grok-app/releases/latest/download/Grok_mac_x64.dmg",
+                "https://github.com/iotserver24/supercharge-app/releases/latest/download/Supercharge_mac_x64.dmg",
             )
             self.assertEqual(
                 installers["windows-x64"]["url"],
-                "https://github.com/RongleCat/grok-app/releases/latest/download/Grok_windows_x64-setup.exe",
+                "https://github.com/iotserver24/supercharge-app/releases/latest/download/Supercharge_windows_x64-setup.exe",
             )
             self.assertEqual(
                 installers["mac-x64"]["versionedUrl"],
-                "https://github.com/RongleCat/grok-app/releases/download/v0.2.20/Grok_0.2.20_x64.dmg",
+                "https://github.com/iotserver24/supercharge-app/releases/download/v0.2.20/Supercharge_0.2.20_x64.dmg",
             )
             self.assertEqual(installers["mac-x64"]["sha256"], hashlib.sha256(b"intel-dmg").hexdigest())
-            self.assertEqual((root / "Grok_mac_x64.dmg").read_bytes(), b"intel-dmg")
-            self.assertEqual((root / "Grok_windows_x64-setup.exe").read_bytes(), b"win-setup")
+            self.assertEqual((root / "Supercharge_mac_x64.dmg").read_bytes(), b"intel-dmg")
+            self.assertEqual((root / "Supercharge_windows_x64-setup.exe").read_bytes(), b"win-setup")
             self.assertIn("linux-x64-rpm", installers)
-            self.assertEqual(installers["linux-x64-rpm"]["versionedFilename"], "Grok-0.2.20-1.x86_64.rpm")
+            self.assertEqual(installers["linux-x64-rpm"]["versionedFilename"], "Supercharge-0.2.20-1.x86_64.rpm")
+            self.assertEqual(
+                installers["linux-x64-arch"]["versionedFilename"],
+                "Supercharge-0.2.20-1-x86_64.pkg.tar.zst",
+            )
+            self.assertEqual(installers["linux-x64-arch"]["kind"], "pacman")
             self.assertNotIn("sig", json.dumps(installers))
             self.assertEqual(payload["manifest"]["officialSite"], OFFICIAL_SITE)
             self.assertEqual(payload["manifest"]["schemaVersion"], SCHEMA_VERSION)
@@ -358,21 +374,21 @@ class WebsiteDownloadsTests(unittest.TestCase):
             upload_list = root / ".website-upload.txt"
             write_outputs(root, payload, json_out=json_out, upload_list=upload_list)
             parsed = json.loads(json_out.read_text(encoding="utf-8"))
-            self.assertEqual(parsed["installers"]["mac-aarch64"]["filename"], "Grok_mac_aarch64.dmg")
+            self.assertEqual(parsed["installers"]["mac-aarch64"]["filename"], "Supercharge_mac_aarch64.dmg")
             listed = upload_list.read_text(encoding="utf-8").splitlines()
             self.assertIn(DOWNLOADS_JSON_NAME, listed)
-            self.assertIn("Grok_mac_x64.dmg", listed)
-            self.assertIn("Grok_windows_x64-setup.exe", listed)
+            self.assertIn("Supercharge_mac_x64.dmg", listed)
+            self.assertIn("Supercharge_windows_x64-setup.exe", listed)
 
     def test_missing_required_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / "Grok_0.2.20_aarch64.dmg").write_bytes(b"arm")
+            (root / "Supercharge_0.2.20_aarch64.dmg").write_bytes(b"arm")
             with self.assertRaises(SystemExit) as ctx:
                 build_manifest(
                     root,
                     tag="v0.2.20",
-                    repo="RongleCat/grok-app",
+                    repo="iotserver24/supercharge-app",
                     write_aliases=False,
                 )
             self.assertIn("mac-x64", str(ctx.exception))

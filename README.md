@@ -58,7 +58,15 @@ Then open `http://HOST:6767` with `SUPERCHARGE_PASSWORD`.
 
 ## GitHub installers
 
-Actions → **Build installers** → **Run workflow**. Enter a version (`0.2.37`). That builds Supercharge App for macOS (ARM + Intel), Windows (x64 + ARM64), and Linux (x64 + ARM64). With **publish_release** on, the installers go on a GitHub Release for that version.
+Each tagged release publishes Supercharge installers for macOS, Windows, and Linux. Linux x64 includes AppImage, Debian, RPM, and Arch packages.
+
+On Arch Linux or Manjaro, download the latest `Supercharge-*-x86_64.pkg.tar.zst` asset and install it with:
+
+```bash
+sudo pacman -U ./Supercharge-*-x86_64.pkg.tar.zst
+```
+
+AUR metadata for `supercharge-app-bin` lives in `packaging/aur/`; publishing it to aur.archlinux.org additionally requires an AUR maintainer SSH key.
 
 ## Development
 
