@@ -21,8 +21,8 @@ class ArchPackageTests(unittest.TestCase):
     def test_aur_metadata_tracks_next_release(self) -> None:
         pkgbuild = (ROOT / "packaging/aur/PKGBUILD").read_text()
         srcinfo = (ROOT / "packaging/aur/.SRCINFO").read_text()
-        self.assertIn("pkgver=0.2.41", pkgbuild)
-        self.assertIn("pkgver = 0.2.41", srcinfo)
+        self.assertIn("pkgver=0.2.42", pkgbuild)
+        self.assertIn("pkgver = 0.2.42", srcinfo)
         for content in (pkgbuild, srcinfo):
             self.assertIn("webkit2gtk-4.1", content)
             self.assertIn("libayatana-appindicator", content)

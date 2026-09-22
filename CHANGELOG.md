@@ -13,6 +13,12 @@ See `docs/llm-wiki/release.md`.
 
 ## [Unreleased]
 
+## [0.2.42] - 2026-09-22
+
+> **Highlight:** Plugins can add secure, live panes directly inside Supercharge.
+>
+> **中文 · 亮点：** 插件现在可在 Supercharge 内安全地添加实时面板。
+
 ### Added
 - Enabled plugins can add isolated panes to the Supercharge sidebar.
 - Plugin panes can create or run chats through permission-gated host actions.
@@ -22,6 +28,16 @@ See `docs/llm-wiki/release.md`.
 - Detached extra folders stay detached after reconnecting.
 - Deleted chats no longer return through CLI session import.
 - Archive dialogs now clarify that terminal CLI sessions remain available.
+
+**中文 · 新增**
+- 已启用的插件现在可在 Supercharge 侧栏添加隔离面板。
+- 插件面板现在可通过权限控制创建或运行聊天。
+
+**中文 · 修复**
+- 项目中的新聊天现在会继承已配置的附加文件夹。
+- 从聊天中移除的附加文件夹在重连后仍保持移除状态。
+- 已删除的聊天不再通过 CLI 会话导入重新出现。
+- 归档对话框现在明确说明终端 CLI 会话仍然可用。
 
 ## [0.2.41] - 2026-09-20
 
