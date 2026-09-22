@@ -30,6 +30,18 @@ describe("resolveWorkbenchHash", () => {
     expect(resolveWorkbenchHash("#/home")).toEqual({ kind: "pane", pane: "chat" });
   });
 
+  it("routes valid plugin panes and rejects malformed plugin hashes", () => {
+    expect(resolveWorkbenchHash("#/plugin/hello-host/home")).toEqual({
+      kind: "plugin",
+      pane: "plugin",
+      route: { plugin: "hello-host", pane: "home" },
+    });
+    expect(resolveWorkbenchHash("#/plugin/../../settings")).toEqual({
+      kind: "pane",
+      pane: "chat",
+    });
+  });
+
   it("bare settings hash restores last route", () => {
     expect(resolveWorkbenchHash("#/settings")).toEqual({
       kind: "settings-last",

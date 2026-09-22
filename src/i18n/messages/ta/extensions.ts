@@ -691,4 +691,10 @@ export const taExtensions = {
   "ext.hooks.activity.exportCopyFailed": "சுருக்கத்தை நகலெடுக்க முடியவில்லை (கிளிப்போர்டு தடுக்கப்பட்டது)",
   "ext.hooks.activity.exportDownloadFailed": "செயல்பாடு ஏற்றுமதியைப் பதிவிறக்க முடியவில்லை",
   "ext.hooks.activity.exportFailed": "செயல்பாடு ஏற்றுமதி தோல்வியடைந்தது",
+  "pluginHost.empty": "இந்தச் செருகுநிரல் பலகையை ஏற்ற முடியவில்லை.",
+  "pluginHost.loading": "செருகுநிரல் ஏற்றப்படுகிறது…",
+  "pluginHost.loadFailed": "செருகுநிரல் UI-ஐ ஏற்ற முடியவில்லை.",
+  "pluginHost.warnTitle": "செருகுநிரல் பங்களிப்பு எச்சரிக்கை",
+  "pluginHost.dialogTitle": "செருகுநிரல்",
+  "pluginHost.moreGroup": "செருகுநிரல்கள்",
 };

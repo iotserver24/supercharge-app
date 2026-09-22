@@ -691,4 +691,10 @@ export const idExtensions = {
   "ext.hooks.activity.exportCopyFailed": "Ringkasan tidak dapat disalin (papan klip diblokir)",
   "ext.hooks.activity.exportDownloadFailed": "Ekspor aktivitas tidak dapat diunduh",
   "ext.hooks.activity.exportFailed": "Ekspor aktivitas gagal",
+  "pluginHost.empty": "Panel plugin ini tidak dapat dimuat.",
+  "pluginHost.loading": "Memuat plugin…",
+  "pluginHost.loadFailed": "UI plugin gagal dimuat.",
+  "pluginHost.warnTitle": "Peringatan kontribusi plugin",
+  "pluginHost.dialogTitle": "Plugin",
+  "pluginHost.moreGroup": "Plugin",
 };

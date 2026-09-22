@@ -691,4 +691,10 @@ export const jaExtensions = {
   "ext.hooks.activity.exportCopyFailed": "要約をコピーできませんでした（クリップボードがブロックされました）",
   "ext.hooks.activity.exportDownloadFailed": "活動の書き出しをダウンロードできませんでした",
   "ext.hooks.activity.exportFailed": "活動の書き出しに失敗しました",
+  "pluginHost.empty": "このプラグインパネルを読み込めませんでした。",
+  "pluginHost.loading": "プラグインを読み込み中…",
+  "pluginHost.loadFailed": "プラグイン UI の読み込みに失敗しました。",
+  "pluginHost.warnTitle": "プラグイン拡張の警告",
+  "pluginHost.dialogTitle": "プラグイン",
+  "pluginHost.moreGroup": "プラグイン",
 };

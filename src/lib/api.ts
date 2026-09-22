@@ -16,6 +16,7 @@ export * from "./api/git";
 export * from "./api/fs";
 export * from "./api/settings";
 export * from "./api/extensions";
+export * from "./api/pluginHost";
 export * from "./api/account";
 export * from "./api/providers";
 export * from "./api/mirror";

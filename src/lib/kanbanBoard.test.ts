@@ -378,10 +378,14 @@ describe("agent kanban surface is not a todo list", () => {
       "utf8",
     );
     const chrome = workbench + sessionModals;
+    const paneNavigation = readFileSync(
+      join(root, "hooks/useWorkbenchPaneNavigation.ts"),
+      "utf8",
+    );
     const sidebar = readFileSync(join(root, "app/WorkbenchSidebar.tsx"), "utf8");
     expect(workbench).toContain("KanbanBoardPage");
     expect(workbench).toContain("navigateKanban");
-    expect(chrome).toContain('hash = "#/kanban"');
+    expect(paneNavigation).toContain('hash = "#/kanban"');
     expect(sidebar).toContain('tr("sidebar.kanban")');
     expect(workbench).toContain('mainPane === "kanban"');
     expect(workbench).not.toContain("liveVoiceOpen");

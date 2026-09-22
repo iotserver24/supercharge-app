@@ -692,4 +692,10 @@ export const enExtensions = {
   "ext.hooks.activity.exportCopyFailed": "Could not copy summary (clipboard blocked)",
   "ext.hooks.activity.exportDownloadFailed": "Could not download activity export",
   "ext.hooks.activity.exportFailed": "Activity export failed",
+  "pluginHost.empty": "This plugin pane could not be loaded.",
+  "pluginHost.loading": "Loading plugin…",
+  "pluginHost.loadFailed": "Plugin UI failed to load.",
+  "pluginHost.warnTitle": "Plugin contribution warning",
+  "pluginHost.dialogTitle": "Plugin",
+  "pluginHost.moreGroup": "Plugins",
 } as const;

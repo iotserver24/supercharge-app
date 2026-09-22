@@ -691,4 +691,10 @@ export const esExtensions = {
   "ext.hooks.activity.exportCopyFailed": "No se pudo copiar el resumen (portapapeles bloqueado)",
   "ext.hooks.activity.exportDownloadFailed": "No se pudo descargar la exportación de actividad",
   "ext.hooks.activity.exportFailed": "Falló la exportación de actividad",
+  "pluginHost.empty": "No se pudo cargar este panel del plugin.",
+  "pluginHost.loading": "Cargando plugin…",
+  "pluginHost.loadFailed": "No se pudo cargar la interfaz del plugin.",
+  "pluginHost.warnTitle": "Advertencia de contribución del plugin",
+  "pluginHost.dialogTitle": "Plugin",
+  "pluginHost.moreGroup": "Plugins",
 };

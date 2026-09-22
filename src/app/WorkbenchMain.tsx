@@ -62,7 +62,8 @@ export type WorkbenchMainProps = {
   toast: string | null;
   dragRegion: "false" | "deep";
   titlebarMax: TitlebarMax;
-  mainPane: "chat" | "automations" | "kanban" | "usage";
+  mainPane: "chat" | "automations" | "kanban" | "usage" | "plugin";
+  pluginTitle?: string | null;
   sessions: SessionRow[];
   session: ChatTitleSession;
   activeProject: Project | null;
@@ -108,6 +109,7 @@ export function WorkbenchMain(props: WorkbenchMainProps) {
     dragRegion,
     titlebarMax,
     mainPane,
+    pluginTitle,
     sessions,
     session,
     activeProject,
@@ -228,7 +230,11 @@ export function WorkbenchMain(props: WorkbenchMainProps) {
               }
             />
           ) : null}
-          {mainPane === "usage" ? <h1 className="main__title" data-tauri-drag-region={dragRegion}>{tr("usageDashboard.title")}</h1> : mainPane === "automations" ? (
+          {mainPane === "usage" ? <h1 className="main__title" data-tauri-drag-region={dragRegion}>{tr("usageDashboard.title")}</h1> : mainPane === "plugin" ? (
+            <h1 className="main__title" data-tauri-drag-region={dragRegion}>
+              {pluginTitle || tr("pluginHost.dialogTitle")}
+            </h1>
+          ) : mainPane === "automations" ? (
             <>
               {!phoneLayout ? (
                 <span className="main__title-icon">

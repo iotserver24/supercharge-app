@@ -102,6 +102,8 @@ pub fn ensure_app_dirs() -> std::io::Result<PathBuf> {
     std::fs::create_dir_all(root.join("cache").join("video-posters"))?;
     // Chat image thumbs (resized JPEG for virtual-list remounts).
     std::fs::create_dir_all(root.join("cache").join("image-thumbs"))?;
+    // Per-plugin UI storage stays inside the app namespace.
+    std::fs::create_dir_all(plugin_data_root())?;
     // Appearance skin packs: local presets + inspect/upload staging.
     std::fs::create_dir_all(skin_staging_inspect_dir())?;
     std::fs::create_dir_all(skin_staging_upload_dir())?;
@@ -265,6 +267,20 @@ pub fn automations_file() -> PathBuf {
 /// App MCP/Skills enable prefs (`extensions.json`).
 pub fn extensions_file() -> PathBuf {
     app_data_root().join("extensions.json")
+}
+
+/// `{app_data}/plugin-data` — isolated storage for enabled plugin UIs.
+pub fn plugin_data_root() -> PathBuf {
+    let dir = app_data_root().join("plugin-data");
+    let _ = fs::create_dir_all(&dir);
+    dir
+}
+
+/// `{app_data}/plugin-data/{plugin_id}`.
+pub fn plugin_data_dir(plugin_id: &str) -> PathBuf {
+    let dir = plugin_data_root().join(plugin_id);
+    let _ = fs::create_dir_all(&dir);
+    dir
 }
 
 /// Percent-encode a path the way Supercharge names session folders under

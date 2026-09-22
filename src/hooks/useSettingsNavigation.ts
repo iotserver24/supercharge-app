@@ -49,6 +49,7 @@ function clearLocationHash(): void {
 export function useSettingsNavigation(opts: {
   tr: TFn;
   onWorkbenchPane: (pane: WorkbenchHashPane) => void;
+  onPluginRoute?: (route: import("@/lib/pluginHost/types").PluginRoute) => void;
   onMenuClose: () => void;
 }) {
   const optsRef = useRef(opts);
@@ -150,6 +151,9 @@ export function useSettingsNavigation(opts: {
         return;
       }
       setSettingsOpen(false);
+      if (route.kind === "plugin") {
+        optsRef.current.onPluginRoute?.(route.route);
+      }
       optsRef.current.onWorkbenchPane(route.pane);
     };
     syncFromHash();

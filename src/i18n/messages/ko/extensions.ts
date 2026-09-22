@@ -691,4 +691,10 @@ export const koExtensions = {
   "ext.hooks.activity.exportCopyFailed": "요약을 복사하지 못했습니다(클립보드 차단됨)",
   "ext.hooks.activity.exportDownloadFailed": "활동 내보내기를 다운로드하지 못했습니다",
   "ext.hooks.activity.exportFailed": "활동 내보내기 실패",
+  "pluginHost.empty": "이 플러그인 패널을 불러오지 못했습니다.",
+  "pluginHost.loading": "플러그인 로드 중…",
+  "pluginHost.loadFailed": "플러그인 UI를 불러오지 못했습니다.",
+  "pluginHost.warnTitle": "플러그인 기여 경고",
+  "pluginHost.dialogTitle": "플러그인",
+  "pluginHost.moreGroup": "플러그인",
 };

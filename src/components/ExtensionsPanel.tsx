@@ -143,6 +143,10 @@ import {
   ensureMediaEndpoint,
   localPathToMediaHttpUrl,
 } from "@/lib/imageSrc";
+import {
+  requestPluginHostRefresh,
+  usePluginContributions,
+} from "@/providers/PluginContributionsProvider";
 
 type SkillEditorState = {
   skill: api.SkillDto;
@@ -192,6 +196,7 @@ export function ExtensionsPanel({
   onSkillsPrefsChanged,
 }: ExtensionsPanelProps) {
   const tr = useMemo(() => createT(locale), [locale]);
+  const pluginHost = usePluginContributions();
 
   const pluginValidateKindLabels = useMemo(
     (): Partial<Record<PluginValidateKind, string>> => ({
@@ -1233,6 +1238,7 @@ export function ExtensionsPanel({
         invalidatePluginsListCache();
         await refresh({ forcePlugins: true });
       }
+      requestPluginHostRefresh();
     } catch (e) {
       setActionError(String(e));
       setActionErrorSource("plugin");
@@ -1940,6 +1946,18 @@ export function ExtensionsPanel({
       {/* Plugins — reference layout: installed strip + 2-col featured catalog */}
       {tab === "plugins" && (
       <div className="ext-ref-stack ext-ref-plugins-scroll">
+        {pluginHost.warns.length > 0 ? (
+          <section className="ext-ref-block" id="settings-anchor-ext-plugin-warnings">
+            <div className="ext-ref-section-label">{tr("pluginHost.warnTitle")}</div>
+            <ul className="ext-alert ext-alert--warn">
+              {pluginHost.warns.map((warning) => (
+                <li key={`${warning.plugin}:${warning.code}:${warning.message}`}>
+                  {warning.plugin}: {warning.message}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
         {/* Installed strip */}
         <section
           className="ext-ref-block"

@@ -691,4 +691,10 @@ export const zhExtensions = {
   "ext.hooks.activity.exportCopyFailed": "无法复制摘要（剪贴板被拦截）",
   "ext.hooks.activity.exportDownloadFailed": "无法下载活动导出",
   "ext.hooks.activity.exportFailed": "活动导出失败",
+  "pluginHost.empty": "无法加载此插件面板。",
+  "pluginHost.loading": "正在加载插件…",
+  "pluginHost.loadFailed": "插件界面加载失败。",
+  "pluginHost.warnTitle": "插件贡献警告",
+  "pluginHost.dialogTitle": "插件",
+  "pluginHost.moreGroup": "插件",
 };

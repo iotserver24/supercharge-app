@@ -691,4 +691,10 @@ export const ukExtensions = {
   "ext.hooks.activity.exportCopyFailed": "Не вдалося скопіювати підсумок (буфер обміну заблоковано)",
   "ext.hooks.activity.exportDownloadFailed": "Не вдалося завантажити експорт активності",
   "ext.hooks.activity.exportFailed": "Експорт активності не вдався",
+  "pluginHost.empty": "Не вдалося завантажити цю панель плагіна.",
+  "pluginHost.loading": "Завантаження плагіна…",
+  "pluginHost.loadFailed": "Не вдалося завантажити інтерфейс плагіна.",
+  "pluginHost.warnTitle": "Попередження про внесок плагіна",
+  "pluginHost.dialogTitle": "Плагін",
+  "pluginHost.moreGroup": "Плагіни",
 };

@@ -691,4 +691,10 @@ export const deExtensions = {
   "ext.hooks.activity.exportCopyFailed": "Zusammenfassung konnte nicht kopiert werden (Zwischenablage blockiert)",
   "ext.hooks.activity.exportDownloadFailed": "Aktivitäts-Export konnte nicht geladen werden",
   "ext.hooks.activity.exportFailed": "Aktivitäts-Export fehlgeschlagen",
+  "pluginHost.empty": "Dieses Plugin-Fenster konnte nicht geladen werden.",
+  "pluginHost.loading": "Plugin wird geladen…",
+  "pluginHost.loadFailed": "Die Plugin-Oberfläche konnte nicht geladen werden.",
+  "pluginHost.warnTitle": "Warnung zum Plugin-Beitrag",
+  "pluginHost.dialogTitle": "Plugin",
+  "pluginHost.moreGroup": "Plugins",
 };

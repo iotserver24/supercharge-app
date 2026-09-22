@@ -1,0 +1,39 @@
+/* Shared plugin-host chrome. Uses host tokens; keep surfaces transparent. */
+html, body {
+  margin: 0;
+  background: transparent;
+  color: var(--text, inherit);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 14px;
+}
+.ph-page {
+  padding: 20px 24px;
+}
+.ph-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.ph-lead {
+  margin: 0 0 16px;
+  color: var(--text-muted, inherit);
+}
+.ph-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ph-btn {
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.35));
+  background: var(--surface, rgba(127, 127, 127, 0.12));
+  color: inherit;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.ph-log {
+  margin-top: 16px;
+  white-space: pre-wrap;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}

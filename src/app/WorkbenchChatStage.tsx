@@ -7,6 +7,7 @@ import type { CSSProperties, Dispatch, ReactNode, RefObject, SetStateAction } fr
 import * as api from "@/lib/api";
 import type { MessageKey } from "@/i18n";
 import { createT, resolveLocale } from "@/i18n";
+import type { WorkbenchPane } from "@/hooks/usePluginPaneState";
 import { pathsEqual, type GitWorktreeEntry } from "@/lib/gitWorktree";
 import {
   classifyTasksBindCwdError,
@@ -99,7 +100,7 @@ export type WorkbenchChatStageProps = {
   liveMap: SessionLiveMap;
   locale: string;
   providerActiveSource?: string;
-  mainPane: "chat" | "automations" | "kanban" | "usage";
+  mainPane: WorkbenchPane;
   markSessionWorktree: (
     sessionId: string | null | undefined,
     path: string,

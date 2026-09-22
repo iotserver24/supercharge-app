@@ -5,8 +5,9 @@
 
 use crate::{
     app_update_package, cli_worktrees, commands, desktop_notify, git_pr_hub, leader, mirror,
-    os_theme, pet_window, remote_im, serve, session_api, signed_update_cache, ssh_remote,
-    system_fonts, theme_editor_window, tray, updater, wallpaper_remote_commands,
+    os_theme, pet_window, plugin_contributions, plugin_ui_server, remote_im, serve, session_api,
+    signed_update_cache, ssh_remote, system_fonts, theme_editor_window, tray, updater,
+    wallpaper_remote_commands,
 };
 
 /// Single invoke handler consumed by `Builder::invoke_handler` in `run()`.
@@ -243,6 +244,13 @@ pub fn app_invoke_handler(
         commands::plugin_mcp_auth_save_tokens,
         commands::plugin_mcp_auth_oauth2,
         commands::plugin_mcp_auth_logout,
+        plugin_contributions::plugin_contributions_list,
+        plugin_contributions::plugin_host_warns,
+        plugin_contributions::plugin_storage_get,
+        plugin_contributions::plugin_storage_set,
+        plugin_contributions::plugin_storage_list,
+        plugin_contributions::plugin_storage_delete,
+        plugin_ui_server::plugin_ui_endpoint,
         // ── Hooks ──
         commands::hooks_list,
         commands::hooks_reveal,

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "app": "supercharge-app",
+  "id": "plugin-ui-hello",
+  "minAppVersion": "0.2.41",
+  "contributes": {
+    "sidebar": [
+      {
+        "id": "home",
+        "title": {
+          "en": "Plugin UI Hello",
+          "zh": "Plugin UI Hello",
+          "zh-TW": "Plugin UI Hello"
+        },
+        "icon": "ui/icon.svg",
+        "entry": "ui/index.html",
+        "placement": "nav"
+      }
+    ]
+  },
+  "permissions": ["sessions.create", "dialog", "toast"]
+}

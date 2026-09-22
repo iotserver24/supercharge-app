@@ -691,4 +691,10 @@ export const filExtensions = {
   "ext.hooks.activity.exportCopyFailed": "Hindi makopya ang buod (naharang ang clipboard)",
   "ext.hooks.activity.exportDownloadFailed": "Hindi ma-download ang export ng aktibidad",
   "ext.hooks.activity.exportFailed": "Nabigo ang pag-export ng aktibidad",
+  "pluginHost.empty": "Hindi ma-load ang plugin pane na ito.",
+  "pluginHost.loading": "Nilo-load ang plugin…",
+  "pluginHost.loadFailed": "Hindi ma-load ang UI ng plugin.",
+  "pluginHost.warnTitle": "Babala sa kontribusyon ng plugin",
+  "pluginHost.dialogTitle": "Plugin",
+  "pluginHost.moreGroup": "Mga plugin",
 };

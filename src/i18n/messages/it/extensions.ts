@@ -691,4 +691,10 @@ export const itExtensions = {
   "ext.hooks.activity.exportCopyFailed": "Impossibile copiare il riepilogo (appunti bloccati)",
   "ext.hooks.activity.exportDownloadFailed": "Impossibile scaricare l’esportazione attività",
   "ext.hooks.activity.exportFailed": "Esportazione attività non riuscita",
+  "pluginHost.empty": "Impossibile caricare questo pannello del plugin.",
+  "pluginHost.loading": "Caricamento del plugin…",
+  "pluginHost.loadFailed": "Impossibile caricare l’interfaccia del plugin.",
+  "pluginHost.warnTitle": "Avviso sul contributo del plugin",
+  "pluginHost.dialogTitle": "Plugin",
+  "pluginHost.moreGroup": "Plugin",
 };

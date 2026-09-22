@@ -9,8 +9,10 @@ import {
   type SettingsTabId,
 } from "@/lib/settingsCatalog";
 import { parsePrHubDeepLink } from "@/lib/prHubDeepLink";
+import { parsePluginHash } from "@/lib/pluginHost/hash";
+import type { PluginRoute } from "@/lib/pluginHost/types";
 
-export type WorkbenchHashPane = "chat" | "automations" | "kanban" | "usage";
+export type WorkbenchHashPane = "chat" | "automations" | "kanban" | "usage" | "plugin";
 
 export type WorkbenchHashRoute =
   | {
@@ -20,6 +22,7 @@ export type WorkbenchHashRoute =
       prNumber: number | null;
     }
   | { kind: "settings-last" }
+  | { kind: "plugin"; pane: "plugin"; route: PluginRoute }
   | { kind: "pane"; pane: WorkbenchHashPane };
 
 /**
@@ -43,6 +46,10 @@ export function resolveWorkbenchHash(
       };
     }
     return { kind: "settings-last" };
+  }
+  const pluginRoute = parsePluginHash(fullHash ?? "");
+  if (pluginRoute) {
+    return { kind: "plugin", pane: "plugin", route: pluginRoute };
   }
   if (raw === "automations" || raw.startsWith("automations")) {
     return { kind: "pane", pane: "automations" };

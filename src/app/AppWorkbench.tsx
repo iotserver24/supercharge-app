@@ -11,6 +11,11 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useThemeShell } from "@/providers/ThemeShellContext";
+import {
+  usePluginPaneState,
+  type WorkbenchPane,
+} from "@/hooks/usePluginPaneState";
+import { WorkbenchPluginPanes } from "@/app/WorkbenchPluginPanes";
 import { usePetCompanion } from "@/hooks/usePetCompanion";
 import { useFloatingMenu } from "@/lib/floatingMenu";
 import { restoreSessionGate } from "@/lib/sessionGateRestore";
@@ -648,6 +653,7 @@ import { useSetupBootGate } from "@/hooks/useSetupBootGate";
 import { useWorkbenchDisplayPrefs } from "@/hooks/useWorkbenchDisplayPrefs";
 import { useWorkbenchLayout } from "@/hooks/useWorkbenchLayout";
 import { useSettingsNavigation } from "@/hooks/useSettingsNavigation";
+import { useWorkbenchPaneNavigation } from "@/hooks/useWorkbenchPaneNavigation";
 import { useAppSettingsPrefs } from "@/hooks/useAppSettingsPrefs";
 import { useSearchPalette } from "@/hooks/useSearchPalette";
 import { useCompactDialog } from "@/hooks/useCompactDialog";
@@ -1232,9 +1238,7 @@ export function AppWorkbench() {
   const [phoneToolsOpen, setPhoneToolsOpen] = useState(false);
   const [phoneAccountOpen, setPhoneAccountOpen] = useState(false);
   /** Inside workbench: chat thread vs scheduled tasks vs agent kanban. */
-  const [mainPane, setMainPane] = useState<"chat" | "automations" | "kanban" | "usage">(
-    "chat",
-  );
+  const [mainPane, setMainPane] = useState<WorkbenchPane>("chat");
   /** Prevent overlapping automation runs. */
   const automationRunLock = useRef(false);
   /** Conversation is guiding the user to create a scheduled task. */
@@ -1649,6 +1653,13 @@ export function AppWorkbench() {
   const tr = useMemo(() => createT(locale), [locale, localeCatalogRev]);
   const trRef = useRef(tr);
   trRef.current = tr;
+  const pluginPanes = usePluginPaneState({
+    locale,
+    mainPane,
+    setMainPane,
+    isSecondaryWindow,
+    isSecondaryWindowRef,
+  });
   const {
     settingsOpen,
     settingsSection,
@@ -1664,6 +1675,7 @@ export function AppWorkbench() {
   } = useSettingsNavigation({
     tr,
     onWorkbenchPane: setMainPane,
+    onPluginRoute: pluginPanes.acceptPluginRoute,
     onMenuClose: () => setShowUserMenu(false),
   });
   const [modelId, setModelId] = useState(DEFAULT_MODEL_ID);
@@ -3016,28 +3028,17 @@ export function AppWorkbench() {
     streamStallSeconds,
   });
 
-  const navigateWorkbench = useCallback(() => {
-    closeSettings();
-    setMainPane("chat");
-  }, [closeSettings]);
-
-  const navigateAutomations = useCallback(() => {
-    closeSettings();
-    setMainPane("automations");
-    setShowUserMenu(false);
-    if (typeof window !== "undefined") {
-      window.location.hash = "#/automations";
-    }
-  }, [closeSettings]);
-
-  const navigateKanban = useCallback(() => {
-    closeSettings();
-    setMainPane("kanban");
-    setShowUserMenu(false);
-    if (typeof window !== "undefined") {
-      window.location.hash = "#/kanban";
-    }
-  }, [closeSettings]);
+  const {
+    navigateWorkbench,
+    navigateAutomations,
+    navigateKanban,
+    navigatePlugin,
+  } = useWorkbenchPaneNavigation({
+    closeSettings,
+    setMainPane,
+    setShowUserMenu,
+    navigatePluginPane: pluginPanes.navigatePlugin,
+  });
 
   const persistOpenTarget = useCallback((target: string) => {
     setDefaultOpenTarget(target);
@@ -12130,9 +12131,13 @@ export function AppWorkbench() {
           mainPane={mainPane}
           onOpenSearch={() => searchPalette.openBlank()}
           onNewChat={() => void newChat(null)}
-          onNavigateAutomations={navigateAutomations}
-          onNavigateKanban={navigateKanban}
-          onNavigateRemoteIm={() => navigateSettings("remote_im", "im")}
+            onNavigateAutomations={navigateAutomations}
+            onNavigateKanban={navigateKanban}
+            pluginRoute={pluginPanes.pluginRoute}
+            onNavigatePlugin={navigatePlugin}
+            isSecondaryWindow={isSecondaryWindow}
+            onNavigateRemoteIm={() => navigateSettings("remote_im", "im")}
+
           showUserMenu={showUserMenu}
           setShowUserMenu={setShowUserMenu}
           closeImmediately={settingsOpen || layout.sidebarCollapsed}
@@ -12223,6 +12228,7 @@ export function AppWorkbench() {
           dragRegion={dragRegion}
           titlebarMax={titlebarMax}
           mainPane={mainPane}
+          pluginTitle={mainPane === "plugin" ? pluginPanes.activePluginTitle : null}
           sessions={sessions}
           session={session}
           activeProject={activeProject}
@@ -12254,6 +12260,16 @@ export function AppWorkbench() {
           openAsidePane={openAsidePane}
           showToast={showToast}
         >
+          <WorkbenchPluginPanes
+            host={pluginPanes.pluginHost}
+            routes={pluginPanes.openedPluginRoutes}
+            activeRoute={pluginPanes.pluginRoute}
+            mainPane={mainPane}
+            locale={locale}
+            theme={theme}
+            onOpenSession={openSessionByIdHandler}
+            onToast={showToast}
+          />
           {mainPane === "usage" ? <Suspense fallback={null}><UsagePage locale={locale} /></Suspense> : mainPane === "kanban" ? (
             <Suspense fallback={null}>
               <KanbanBoardPage
@@ -12335,7 +12351,7 @@ export function AppWorkbench() {
               }}
               onRunNow={(auto) => void runAutomation(auto)}
               />            </Suspense>
-          ) : (
+          ) : mainPane === "plugin" ? null : (
           <>
           {activeProject && isProjectFolderMissing(activeProject) && (
             <div className="conn-bar">

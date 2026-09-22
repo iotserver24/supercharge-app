@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Plugin UI Hello</title>
+    <link rel="stylesheet" href="/plugin-host/chrome.css" />
+    <script src="/plugin-host/host-client.js"></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main class="ph-page">
+      <h1 class="ph-title">Plugin UI Hello</h1>
+      <p class="ph-lead">Generic host fixture. No business UI lives in the App package.</p>
+      <div class="ph-row">
+        <button type="button" class="ph-btn" id="btn-notice">Notice</button>
+        <button type="button" class="ph-btn" id="btn-compose">Compose</button>
+        <button type="button" class="ph-btn" id="btn-run">Run</button>
+      </div>
+      <pre class="ph-log" id="log"></pre>
+    </main>
+  </body>
+</html>

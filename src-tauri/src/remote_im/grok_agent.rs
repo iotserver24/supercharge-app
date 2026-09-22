@@ -717,12 +717,11 @@ mod tests {
         let home = resolve_remote_supercharge_home();
         let expected = crate::paths::resolve_agent_supercharge_home(&mode);
         assert_eq!(home, expected);
-        // Independent mode uses the App-owned Supercharge profile.
+        // Independent mode uses the App-owned agent-home profile.
         if mode != "shared" {
             assert!(
-                home.ends_with("supercharge-home")
-                    || home.to_string_lossy().contains("supercharge-home"),
-                "independent SUPERCHARGE_HOME should be supercharge-home, got {}",
+                home.ends_with("agent-home") || home.to_string_lossy().contains("agent-home"),
+                "independent SUPERCHARGE_HOME should be agent-home, got {}",
                 home.display()
             );
         }

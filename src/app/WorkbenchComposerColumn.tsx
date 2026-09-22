@@ -58,6 +58,7 @@ import { ComposerModelMenu } from "@/components/ComposerModelMenu";
 import { WorkbenchComposerShell } from "@/app/WorkbenchComposerShell";
 import { MultiRootWorkspaceModal } from "@/components/MultiRootWorkspaceModal";
 import { useMultiRootWorkspace } from "@/hooks/useMultiRootWorkspace";
+import type { WorkbenchPane } from "@/hooks/usePluginPaneState";
 import { isBoundWorkspaceId } from "@/lib/multiRootWorkspace";
 
 export type WorkbenchComposerColumnProps = {
@@ -249,7 +250,7 @@ export type WorkbenchComposerColumnProps = {
   setWelcomeIntroActive: Dispatch<SetStateAction<boolean>>;
   dockSidebarOccupied: number;
   dragZone: "main" | "sidebar" | null;
-  mainPane: "chat" | "automations" | "kanban" | "usage";
+  mainPane: WorkbenchPane;
   tr: TFn;
   slashFilterQuery: string;
   composerPlusStyle: CSSProperties | undefined;

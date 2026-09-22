@@ -13,6 +13,10 @@ See `docs/llm-wiki/release.md`.
 
 ## [Unreleased]
 
+### Added
+- Enabled plugins can add isolated panes to the Supercharge sidebar.
+- Plugin panes can create or run chats through permission-gated host actions.
+
 ### Fixed
 - New project chats now inherit configured extra folders.
 - Detached extra folders stay detached after reconnecting.

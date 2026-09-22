@@ -29,7 +29,7 @@ import {
   IconScheduled,
   IconSearch,
 } from "@/components/icons";
-import { createT } from "@/i18n";
+import { createT, type Locale } from "@/i18n";
 import { isDesktopHost, type CustomProvider } from "@/lib/api";
 import { openThemeEditorWindow } from "@/lib/api/system";
 import { REMOTE_CONTROL_ENABLED } from "@/lib/featureFlags";
@@ -46,6 +46,30 @@ import {
 import { paneSplitSizeStyle } from "@/lib/paneSplitMotion";
 import type { Theme, ThemePreference } from "@/lib/theme";
 import { requestWhatsNewOpen } from "@/lib/whatsNew";
+import { PluginNavItems } from "@/components/plugin-host";
+import { usePluginContributions } from "@/providers/PluginContributionsProvider";
+import type { PluginRoute } from "@/lib/pluginHost/types";
+
+function PluginSidebarItems(props: {
+  locale: string;
+  mainPane: WorkbenchSidebarProps["mainPane"];
+  route: PluginRoute | null;
+  onNavigate: (route: PluginRoute) => void;
+}) {
+  const { contributions } = usePluginContributions();
+  const locale = props.locale as Locale;
+  return (
+    <PluginNavItems
+      contributions={contributions}
+      locale={locale}
+      activePlugin={
+        props.mainPane === "plugin" ? props.route?.plugin : null
+      }
+      activePane={props.mainPane === "plugin" ? props.route?.pane : null}
+      onOpen={(plugin, pane) => props.onNavigate({ plugin, pane })}
+    />
+  );
+}
 
 type TFn = ReturnType<typeof createT>;
 
@@ -88,7 +112,10 @@ export type WorkbenchSidebarProps = {
   replaceProviderBrandLogo: boolean;
   customRouteActive: boolean;
   activeCustomProvider: CustomProvider | null;
-  mainPane: "chat" | "automations" | "kanban" | "usage";
+  mainPane: "chat" | "automations" | "kanban" | "usage" | "plugin";
+  pluginRoute?: PluginRoute | null;
+  onNavigatePlugin?: (route: PluginRoute) => void;
+  isSecondaryWindow?: boolean;
   onOpenSearch: () => void;
   onNewChat: () => void;
   onNavigateAutomations: () => void;
@@ -141,6 +168,9 @@ export function WorkbenchSidebar(props: WorkbenchSidebarProps) {
     customRouteActive,
     activeCustomProvider,
     mainPane,
+    pluginRoute,
+    onNavigatePlugin,
+    isSecondaryWindow = false,
     onOpenSearch,
     onNewChat,
     onNavigateAutomations,
@@ -347,6 +377,14 @@ export function WorkbenchSidebar(props: WorkbenchSidebarProps) {
               </span>
               {tr("mirror.connect")}
             </button>
+          ) : null}
+          {!isSecondaryWindow && onNavigatePlugin ? (
+            <PluginSidebarItems
+              locale={locale}
+              mainPane={mainPane}
+              route={pluginRoute ?? null}
+              onNavigate={onNavigatePlugin}
+            />
           ) : null}
         </div>
 

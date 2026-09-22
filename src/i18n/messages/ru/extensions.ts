@@ -691,4 +691,10 @@ export const ruExtensions = {
   "ext.hooks.activity.exportCopyFailed": "Не удалось скопировать сводку (буфер обмена заблокирован)",
   "ext.hooks.activity.exportDownloadFailed": "Не удалось скачать экспорт активности",
   "ext.hooks.activity.exportFailed": "Экспорт активности не удался",
+  "pluginHost.empty": "Не удалось загрузить эту панель плагина.",
+  "pluginHost.loading": "Загрузка плагина…",
+  "pluginHost.loadFailed": "Не удалось загрузить интерфейс плагина.",
+  "pluginHost.warnTitle": "Предупреждение о вкладе плагина",
+  "pluginHost.dialogTitle": "Плагин",
+  "pluginHost.moreGroup": "Плагины",
 };

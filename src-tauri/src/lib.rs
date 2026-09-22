@@ -96,7 +96,9 @@ mod error;
 mod extensions;
 mod mcp_oauth;
 mod plugin_auth_transport;
+mod plugin_contributions;
 mod plugin_mcp;
+mod plugin_ui_server;
 
 mod fs_browser;
 
@@ -824,6 +826,16 @@ pub fn run() {
                     match browser_bridge::start(handle.clone()).await {
                         Ok(bridge) => { handle.manage(bridge); }
                         Err(error) => tracing::error!(%error, "embedded browser bridge failed to start"),
+                    }
+                    match plugin_ui_server::start().await {
+                        Ok(plugin_ui) => {
+                            tracing::info!(
+                                base_url = %plugin_ui.base_url,
+                                "plugin UI server ready"
+                            );
+                            handle.manage(plugin_ui);
+                        }
+                        Err(error) => tracing::error!(%error, "plugin UI server failed to start"),
                     }
                     match media_server::start().await {
                         Ok(h) => {

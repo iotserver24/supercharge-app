@@ -691,4 +691,10 @@ export const frExtensions = {
   "ext.hooks.activity.exportCopyFailed": "Impossible de copier le résumé (presse-papiers bloqué)",
   "ext.hooks.activity.exportDownloadFailed": "Impossible de télécharger l’export d’activité",
   "ext.hooks.activity.exportFailed": "Échec de l’export d’activité",
+  "pluginHost.empty": "Ce panneau de plugin n’a pas pu être chargé.",
+  "pluginHost.loading": "Chargement du plugin…",
+  "pluginHost.loadFailed": "L’interface du plugin n’a pas pu être chargée.",
+  "pluginHost.warnTitle": "Avertissement de contribution du plugin",
+  "pluginHost.dialogTitle": "Plugin",
+  "pluginHost.moreGroup": "Plugins",
 };

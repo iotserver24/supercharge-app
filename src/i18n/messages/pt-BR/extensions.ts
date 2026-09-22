@@ -691,4 +691,10 @@ export const ptBRExtensions = {
   "ext.hooks.activity.exportCopyFailed": "Não foi possível copiar o resumo (área de transferência bloqueada)",
   "ext.hooks.activity.exportDownloadFailed": "Não foi possível baixar a exportação de atividade",
   "ext.hooks.activity.exportFailed": "Falha na exportação da atividade",
+  "pluginHost.empty": "Não foi possível carregar este painel do plugin.",
+  "pluginHost.loading": "Carregando plugin…",
+  "pluginHost.loadFailed": "Falha ao carregar a interface do plugin.",
+  "pluginHost.warnTitle": "Aviso de contribuição do plugin",
+  "pluginHost.dialogTitle": "Plugin",
+  "pluginHost.moreGroup": "Plugins",
 };

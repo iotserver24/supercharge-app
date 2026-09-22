@@ -1,0 +1,6 @@
+{
+  "name": "plugin-ui-hello",
+  "version": "0.0.1",
+  "description": "Host P0 fixture for the generic plugin UI iframe.",
+  "skills": "./skills"
+}
