@@ -13,6 +13,18 @@ See `docs/llm-wiki/release.md`.
 
 ## [Unreleased]
 
+## [0.2.43] - 2026-09-22
+
+> **Highlight:** The plugin-pane release now builds cleanly on every desktop platform.
+>
+> **中文 · 亮点：** 插件面板版本现在可在所有桌面平台上正常构建。
+
+### Fixed
+- Windows now builds the isolated plugin-pane test suite correctly.
+
+**中文 · 修复**
+- Windows 现在可正确构建隔离插件面板测试套件。
+
 ## [0.2.42] - 2026-09-22
 
 > **Highlight:** Plugins can add secure, live panes directly inside Supercharge.

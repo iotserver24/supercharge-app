@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "app": "supercharge-app",
   "id": "plugin-ui-hello",
-  "minAppVersion": "0.2.42",
+  "minAppVersion": "0.2.43",
   "contributes": {
     "sidebar": [
       {

@@ -391,9 +391,9 @@ mod plugin_ui_tests {
     #[test]
     fn plugin_ui_resolve_blocks_symlink_escape() {
         let root = fixture_plugin("sym");
-        let link = root.join("ui").join("leak.md");
         #[cfg(unix)]
         {
+            let link = root.join("ui").join("leak.md");
             std::os::unix::fs::symlink(root.join("skills").join("SKILL.md"), &link).unwrap();
             assert_eq!(
                 resolve_plugin_ui_file(&root, "ui/leak.md"),
