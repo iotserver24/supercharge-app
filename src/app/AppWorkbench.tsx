@@ -176,6 +176,7 @@ import {
   shouldConfirmClearGoalOrch,
 } from "@/lib/goalOrch";
 import * as api from "@/lib/api";
+import { installWindowResizePause } from "@/lib/windowResizePause";
 import { queueComposerPreferenceApply } from "@/lib/composerPrefsBarrier";
 import {
   isDangerousSandboxProfile,
@@ -2157,7 +2158,9 @@ export function AppWorkbench() {
     let unlistenResize: (() => void) | undefined;
     let unlistenMoved: (() => void) | undefined;
     let unlistenScale: (() => void) | undefined;
+    let resizeSyncTimer: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
+    installWindowResizePause();
     void (async () => {
       try {
         const { getCurrentWindow } = await import("@tauri-apps/api/window");
@@ -2172,12 +2175,19 @@ export function AppWorkbench() {
           }
         };
         await sync();
+        const syncMaximizedAfterResize = () => {
+          if (resizeSyncTimer != null) clearTimeout(resizeSyncTimer);
+          resizeSyncTimer = setTimeout(() => {
+            resizeSyncTimer = undefined;
+            void sync();
+          }, 180);
+        };
         unlistenResize = await w.onResized(() => {
-          void sync();
+          syncMaximizedAfterResize();
         });
         try {
           unlistenMoved = await w.onMoved(() => {
-            void sync();
+            syncMaximizedAfterResize();
           });
         } catch {
           /* older API */
@@ -2200,6 +2210,7 @@ export function AppWorkbench() {
     })();
     return () => {
       cancelled = true;
+      if (resizeSyncTimer != null) clearTimeout(resizeSyncTimer);
       unlistenResize?.();
       unlistenMoved?.();
       unlistenScale?.();

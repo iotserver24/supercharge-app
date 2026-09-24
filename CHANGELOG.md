@@ -13,6 +13,26 @@ See `docs/llm-wiki/release.md`.
 
 ## [Unreleased]
 
+## [0.2.44] - 2026-09-24
+
+> **Highlight:** Resizing the window is much smoother, and the chat stays pinned when a thinking block collapses.
+>
+> **中文 · 亮点：** 调整窗口大小更顺畅，思考块收起时对话仍停在最新消息。
+
+### Fixed
+- Dragging or maximizing the window no longer rebuilds the whole screen on every pixel.
+- The chat stays pinned to the latest message when a thinking block collapses.
+- A saved message whose text is not a plain string still renders instead of blanking the thread.
+- A repeated models table in the agent config no longer stops the agent from starting.
+- Linux installers build on Fedora without the AppImage packager aborting.
+
+**中文 · 修复**
+- 拖动或最大化窗口时，不再在每一像素上重绘整个界面。
+- 思考块收起时，对话仍停在最新消息。
+- 已保存消息的正文如果不是纯文本，仍会显示，不再让整段对话空白。
+- 代理配置里重复的 models 表不再阻止代理启动。
+- Fedora 上可以打出 Linux 安装包，AppImage 打包不再中途失败。
+
 ## [0.2.43] - 2026-09-22
 
 > **Highlight:** The plugin-pane release now builds cleanly on every desktop platform.

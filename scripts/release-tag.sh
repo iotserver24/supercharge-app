@@ -103,7 +103,7 @@ p = Path("src-tauri/Cargo.lock")
 if p.is_file():
     lock = p.read_text()
     lock2, n = re.subn(
-        r'(name = "grok-app"\nversion = ")[^"]+(")',
+        r'(name = "supercharge-app"\nversion = ")[^"]+(")',
         rf"\g<1>{ver}\2",
         lock,
         count=1,

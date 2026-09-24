@@ -474,6 +474,118 @@ impl ConfigHealReport {
     }
 }
 
+/// How many times a non-array table header is repeated after its first use.
+///
+/// The TOML crate rejects a second `[models]` even when the keys do not
+/// overlap. Array tables (`[[hooks]]`) are separate elements and are ignored.
+pub fn count_repeated_standard_headers(text: &str) -> usize {
+    let mut seen: HashMap<String, usize> = HashMap::new();
+    let mut extra = 0usize;
+    for line in text.lines() {
+        let Some((is_array, name)) = parse_table_header(line.trim()) else {
+            continue;
+        };
+        if is_array {
+            continue;
+        }
+        let n = seen.entry(name.to_string()).or_insert(0);
+        if *n > 0 {
+            extra += 1;
+        }
+        *n += 1;
+    }
+    extra
+}
+
+/// Fold later copies of a standard table into the first one.
+///
+/// Keys stay in that table. A second `[models]` after `[model.pollinations]`
+/// must not leave `max_retries` inside the provider table. Array tables are
+/// left as separate elements. Returns `(text, headers_removed)`.
+pub fn collapse_repeated_standard_tables(text: &str) -> (String, usize) {
+    if count_repeated_standard_headers(text) == 0 {
+        return (text.to_string(), 0);
+    }
+
+    struct Seg {
+        header: Option<String>,
+        array: bool,
+        body: Vec<String>,
+    }
+
+    let mut segs: Vec<Seg> = vec![Seg {
+        header: None,
+        array: false,
+        body: Vec::new(),
+    }];
+    for line in text.lines() {
+        if let Some((is_array, name)) = parse_table_header(line.trim()) {
+            segs.push(Seg {
+                header: Some(name.to_string()),
+                array: is_array,
+                body: Vec::new(),
+            });
+            continue;
+        }
+        segs.last_mut().unwrap().body.push(line.to_string());
+    }
+
+    let mut first_of: HashMap<String, usize> = HashMap::new();
+    let mut extras: Vec<(usize, Vec<String>)> = Vec::new();
+    let mut removed = 0usize;
+    for (i, seg) in segs.iter().enumerate() {
+        if seg.array {
+            continue;
+        }
+        let Some(name) = seg.header.clone() else {
+            continue;
+        };
+        if let Some(&first) = first_of.get(&name) {
+            extras.push((first, seg.body.clone()));
+            removed += 1;
+        } else {
+            first_of.insert(name, i);
+        }
+    }
+    let mut drop_idx: HashMap<usize, ()> = HashMap::new();
+    for (first, extra) in extras {
+        // Re-find the source index: body was cloned before any mutation.
+        segs[first].body.extend(extra);
+    }
+    for (i, seg) in segs.iter().enumerate() {
+        if seg.array {
+            continue;
+        }
+        let Some(name) = &seg.header else {
+            continue;
+        };
+        if first_of.get(name).copied() != Some(i) {
+            drop_idx.insert(i, ());
+        }
+    }
+
+    let mut out: Vec<String> = Vec::new();
+    for (i, seg) in segs.iter().enumerate() {
+        if drop_idx.contains_key(&i) {
+            continue;
+        }
+        if let Some(name) = &seg.header {
+            let brackets = if seg.array {
+                format!("[[{name}]]")
+            } else {
+                format!("[{name}]")
+            };
+            out.push(brackets);
+        }
+        out.extend(seg.body.iter().cloned());
+    }
+    let mut joined = out.join("\n");
+    if (text.ends_with('\n') || text.is_empty()) && !joined.ends_with('\n') {
+        joined.push('\n');
+    }
+    (joined, removed)
+}
+
 /// If independent agent-home `config.toml` has duplicate keys, backup and
 /// dedupe (keep last). **Valid files are never written.**
 ///
@@ -509,7 +621,8 @@ pub fn ensure_agent_home_config_sane(session_data_mode: &str) -> Result<ConfigHe
         }
 
         let (dup_count, examples) = count_duplicate_assignments(&existing);
-        if dup_count == 0 {
+        let repeated_headers = count_repeated_standard_headers(&existing);
+        if dup_count == 0 && repeated_headers == 0 {
             return Ok(ConfigHealReport {
                 changed: false,
                 path: Some(path.display().to_string()),
@@ -519,7 +632,9 @@ pub fn ensure_agent_home_config_sane(session_data_mode: &str) -> Result<ConfigHe
             });
         }
 
-        let (healed, removed) = dedupe_assignment_keys(&existing);
+        let (deduped, removed_keys) = dedupe_assignment_keys(&existing);
+        let (healed, removed_headers) = collapse_repeated_standard_tables(&deduped);
+        let removed = removed_keys + removed_headers;
         if removed == 0 || healed == existing {
             return Ok(ConfigHealReport {
                 changed: false,
@@ -530,7 +645,8 @@ pub fn ensure_agent_home_config_sane(session_data_mode: &str) -> Result<ConfigHe
             });
         }
         let (still, _) = count_duplicate_assignments(&healed);
-        if still > 0 {
+        let still_headers = count_repeated_standard_headers(&healed);
+        if still > 0 || still_headers > 0 {
             return Err(format!(
                 "agent-home config.toml still has duplicate keys after heal (examples: {})",
                 examples.join(", ")
@@ -777,6 +893,30 @@ command = \"y\"
     }
 
     #[test]
+    fn collapse_second_models_table_keeps_keys_on_models() {
+        let bad = "\
+[models]
+d = false
+[model.pollinations]
+model = \"openai/x\"
+[models]
+max_retries = 12
+default = \"pollinations\"
+";
+        assert_eq!(count_duplicate_assignments(bad).0, 0);
+        assert_eq!(count_repeated_standard_headers(bad), 1);
+        let (healed, removed) = collapse_repeated_standard_tables(bad);
+        assert_eq!(removed, 1);
+        assert_eq!(count_repeated_standard_headers(&healed), 0, "{healed}");
+        let models_at = healed.find("[models]").unwrap();
+        let provider_at = healed.find("[model.pollinations]").unwrap();
+        let retries_at = healed.find("max_retries = 12").unwrap();
+        let default_at = healed.find("default = \"pollinations\"").unwrap();
+        assert!(models_at < retries_at && retries_at < provider_at, "{healed}");
+        assert!(provider_at < default_at || default_at < provider_at, "{healed}");
+        assert!(default_at < provider_at, "{healed}");
+    }
+
     fn dedupe_merges_split_ui_tables() {
         // Two [ui] fragments with same key — TOML treats as one table.
         let bad = "[ui]\nyolo = false\n\n[ui]\nyolo = true\npermission_mode = \"x\"\n";

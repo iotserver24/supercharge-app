@@ -38,6 +38,12 @@ need_cmd pnpm
 need_cmd rustc
 need_cmd cargo
 
+# linuxdeploy's bundled strip cannot read RELR (.relr.dyn) objects on newer
+# Fedora/Ubuntu toolchains and aborts the AppImage with "failed to run linuxdeploy".
+if [[ "$(uname -s)" == "Linux" ]]; then
+  export NO_STRIP=1
+fi
+
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 

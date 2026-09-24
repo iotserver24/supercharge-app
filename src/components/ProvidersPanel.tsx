@@ -4,6 +4,7 @@
  */
 
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -126,7 +127,7 @@ function FieldHelp({ label, tip }: { label: string; tip: string }) {
   );
 }
 
-export function ProvidersPanel({
+function ProvidersPanelView({
   locale,
   onProvidersChanged,
   onProviderActivated,
@@ -2145,3 +2146,5 @@ export function ProvidersPanel({
     </div>
   );
 }
+
+export const ProvidersPanel = memo(ProvidersPanelView);
