@@ -12,6 +12,7 @@ import { ExtensionsPanelPluginsModals } from "@/components/ExtensionsPanelPlugin
 import { ExtensionsPanelMcpModals } from "@/components/ExtensionsPanelMcpModals";
 import { PluginApiPanel } from "@/components/PluginApiPanel";
 import { PluginMarketplaceCatalogStatus } from "@/components/PluginMarketplaceCatalogStatus";
+import { SkillMdMarketplaceSection } from "@/components/SkillMdMarketplaceSection";
 import {
   IconDoctor,
   IconEdit,
@@ -2158,6 +2159,8 @@ export function ExtensionsPanel({
             </ul>
           </section>
         ) : null}
+
+        {presentation === "marketplace" ? <SkillMdMarketplaceSection /> : null}
 
         {/* Discover / Featured catalog — 2 columns, paginated */}
         <section
