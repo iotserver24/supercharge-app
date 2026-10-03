@@ -19,6 +19,11 @@ See `docs/llm-wiki/release.md`.
 ### Changed
 - Project and model selection respond sooner, with less background work while idle.
 
+## [0.2.48] - 2026-10-03
+
+### Added
+- SkillMD discovery is available in the desktop Plugin Marketplace.
+
 ## [0.2.47] - 2026-10-02
 
 > **Highlight:** CLI conversations appear automatically alongside App chats, including with custom providers.
