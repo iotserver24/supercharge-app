@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "vectra-github",
+  "name": "GitHub MCP",
+  "version": "1.0.0",
+  "apiVersion": "1",
+  "description": "Connect a bot to GitHub's remote MCP server with a personal access token.",
+  "permissions": ["mcp:http"],
+  "components": [],
+  "mcpServers": {
+    "github": {
+      "transport": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${config.github-token}"
+      }
+    }
+  },
+  "hooks": [],
+  "userConfig": {
+    "github-token": {
+      "description": "GitHub personal access token. Choose only the repository permissions this bot needs.",
+      "required": true,
+      "sensitive": true
+    }
+  }
+}
