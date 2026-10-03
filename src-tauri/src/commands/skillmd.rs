@@ -60,23 +60,46 @@ pub async fn skillmd_search(query: String) -> Result<SkillMdSearchResponse, Stri
                     let slug = value.get("slug")?.as_str()?.trim();
                     let title = value.get("title")?.as_str()?.trim();
                     let item_type = value.get("type")?.as_str()?;
-                    if slug.is_empty() || title.is_empty() || !matches!(item_type, "single" | "pack") {
+                    if slug.is_empty()
+                        || title.is_empty()
+                        || !matches!(item_type, "single" | "pack")
+                    {
                         return None;
                     }
-                    let raw_url = value.get("raw_url").and_then(serde_json::Value::as_str).filter(|url| url.starts_with("https://"));
+                    let raw_url = value
+                        .get("raw_url")
+                        .and_then(serde_json::Value::as_str)
+                        .filter(|url| url.starts_with("https://"));
                     let agents = value
                         .get("agents")
                         .and_then(serde_json::Value::as_str)
-                        .map(|agents| agents.split(',').map(str::trim).filter(|agent| !agent.is_empty()).map(ToOwned::to_owned).collect())
+                        .map(|agents| {
+                            agents
+                                .split(',')
+                                .map(str::trim)
+                                .filter(|agent| !agent.is_empty())
+                                .map(ToOwned::to_owned)
+                                .collect()
+                        })
                         .unwrap_or_default();
                     Some(SkillMdSearchItem {
                         slug: slug.to_owned(),
                         item_type: item_type.to_owned(),
                         title: title.to_owned(),
-                        description: value.get("description").and_then(serde_json::Value::as_str).unwrap_or("No description provided.").to_owned(),
-                        category: value.get("category").and_then(serde_json::Value::as_str).map(ToOwned::to_owned),
+                        description: value
+                            .get("description")
+                            .and_then(serde_json::Value::as_str)
+                            .unwrap_or("No description provided.")
+                            .to_owned(),
+                        category: value
+                            .get("category")
+                            .and_then(serde_json::Value::as_str)
+                            .map(ToOwned::to_owned),
                         agents,
-                        verified: value.get("verified").and_then(serde_json::Value::as_bool).unwrap_or(false),
+                        verified: value
+                            .get("verified")
+                            .and_then(serde_json::Value::as_bool)
+                            .unwrap_or(false),
                         raw_url: raw_url.map(ToOwned::to_owned),
                     })
                 })
