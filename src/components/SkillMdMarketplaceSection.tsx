@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { searchSkillMd, type SkillMdItem } from "@/lib/skillmd";
 import { IconRefresh, IconSkills } from "@/components/icons";
 
-export function SkillMdMarketplaceSection() {
+export function SkillMdMarketplaceSection({ context = "plugins" }: { context?: "plugins" | "skills" }) {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<SkillMdItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,7 @@ export function SkillMdMarketplaceSection() {
       <div className="ext-ref-block__head">
         <div>
           <div className="ext-ref-section-label" id="skillmd-marketplace-title">
-            <IconSkills size={15} /> SkillMD skills and plugins
+            <IconSkills size={15} /> SkillMD {context === "skills" ? "skills" : "skills and plugins"}
           </div>
           <p className="ext-ref-block__hint">
             Discover public SkillMD entries. Results are discovery-only; installation stays disabled until the official secure bundle flow is available.

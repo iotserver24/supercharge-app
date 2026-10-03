@@ -13,6 +13,19 @@ See `docs/llm-wiki/release.md`.
 
 ## [Unreleased]
 
+## [0.2.49] - 2026-10-03
+
+### Added
+- Live SkillMD search is available in the desktop Plugins and Skills marketplaces.
+
+### Fixed
+- SkillMD searches now use the native desktop network bridge instead of WebView cross-origin requests.
+
+## [0.2.48] - 2026-10-03
+
+### Added
+- SkillMD discovery is available in the desktop Plugin Marketplace.
+
 ### Fixed
 - Windows window controls and folder pickers respond more reliably under load.
 

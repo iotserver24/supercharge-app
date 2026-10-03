@@ -2160,7 +2160,7 @@ export function ExtensionsPanel({
           </section>
         ) : null}
 
-        {presentation === "marketplace" ? <SkillMdMarketplaceSection /> : null}
+        {presentation === "marketplace" ? <SkillMdMarketplaceSection context="plugins" /> : null}
 
         {/* Discover / Featured catalog — 2 columns, paginated */}
         <section
@@ -2481,6 +2481,7 @@ export function ExtensionsPanel({
       {/* Skills */}
       {tab === "skills" && (
       <>
+      {presentation === "marketplace" ? <SkillMdMarketplaceSection context="skills" /> : null}
       <h2 className="settings-page__h2" id="settings-anchor-ext-skills">
         <IconSkills size={15} />
         {tr("ext.skills.title")}

@@ -23,6 +23,7 @@ include!("doctor_p1.rs");
 include!("doctor_p2.rs");
 include!("extensions_p1.rs");
 include!("extensions_p2.rs");
+include!("skillmd.rs");
 include!("plugin_api.rs");
 include!("customize.rs");
 include!("fs.rs");

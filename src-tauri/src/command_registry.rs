@@ -44,6 +44,7 @@ pub fn app_invoke_handler(
         // ── CLI & environment probe ──
         commands::probe_cli,
         commands::wsl_status,
+        commands::skillmd_search,
         // ── SSH remote hosts ──
         ssh_remote::ssh_list_hosts,
         ssh_remote::ssh_test_host,
