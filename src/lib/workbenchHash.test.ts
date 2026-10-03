@@ -30,6 +30,13 @@ describe("resolveWorkbenchHash", () => {
     expect(resolveWorkbenchHash("#/home")).toEqual({ kind: "pane", pane: "chat" });
   });
 
+  it("routes the local marketplace separately from settings and hosted plugin panes", () => {
+    expect(resolveWorkbenchHash("#/plugin-marketplace")).toEqual({ kind: "pane", pane: "plugin-marketplace" });
+    expect(resolveWorkbenchHash("#/plugin-marketplace?query=tools")).toEqual({ kind: "pane", pane: "plugin-marketplace" });
+    expect(resolveWorkbenchHash("#/plugin-marketplace-unrelated")).toEqual({ kind: "pane", pane: "chat" });
+    expect(resolveWorkbenchHash("#/settings/extensions/market")).toMatchObject({ kind: "settings-explicit", section: "extensions", tab: "plugins" });
+  });
+
   it("routes valid plugin panes and rejects malformed plugin hashes", () => {
     expect(resolveWorkbenchHash("#/plugin/hello-host/home")).toEqual({
       kind: "plugin",

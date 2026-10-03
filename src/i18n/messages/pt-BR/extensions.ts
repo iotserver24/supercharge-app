@@ -1,5 +1,8 @@
 /** pt-BR messages — domain: extensions */
 export const ptBRExtensions = {
+  "localMarketplace.title": "Marketplace de plugins",
+  "localMarketplace.subtitle": "Descubra plugins para seu agente local. Instale a partir das fontes do marketplace e gerencie plugins, servidores MCP e habilidades neste dispositivo. Nada é vinculado a uma VM na nuvem.",
+  "localMarketplace.manage": "Gerenciar plugins instalados",
   "mcpModal.title": "Servidores MCP",
   "mcpModal.hint": "Servidores descobertos pelo Supercharge CLI (inspect). Ative ou desative-os em Configurações → Extensões; servidores ativos são injetados em novas sessões do agente.",
   "mcpModal.loading": "Carregando servidores MCP…",

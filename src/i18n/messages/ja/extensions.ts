@@ -1,5 +1,8 @@
 /** ja messages — domain: extensions */
 export const jaExtensions = {
+  "localMarketplace.title": "プラグインマーケットプレイス",
+  "localMarketplace.subtitle": "ローカルエージェント用のプラグインを探しましょう。マーケットプレイスのソースからインストールし、このデバイスでプラグイン、MCP サーバー、スキルを管理できます。クラウド VM には連携しません。",
+  "localMarketplace.manage": "インストール済みプラグインを管理",
   "mcpModal.title": "MCP サーバー",
   "mcpModal.hint": "Supercharge CLI（検査）が検出したサーバーです。設定 → 拡張機能 で有効 / 無効にします。有効なサーバーは新しいエージェントセッションに注入されます。",
   "mcpModal.loading": "MCP サーバーを読み込み中…",

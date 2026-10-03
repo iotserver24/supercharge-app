@@ -550,9 +550,8 @@ import {
   summarizeSessionChanges,
 } from "@/lib/sessionChanges";
 
-
 const AutomationsPage = lazy(() => import("@/components/AutomationsPage").then(m => ({ default: m.AutomationsPage })));
-const UsagePage = lazy(() => import("@/components/UsagePage").then(m => ({ default: m.UsagePage })));
+const LocalToolsPage = lazy(() => import("@/components/LocalToolsPage").then(m => ({ default: m.LocalToolsPage })));
 const KanbanBoardPage = lazy(async () => {
   const m = await import("@/components/KanbanBoardPage");
   return { default: m.KanbanBoardPage };
@@ -12216,7 +12215,7 @@ export function AppWorkbench() {
             onOpenSession={openSessionByIdHandler}
             onToast={showToast}
           />
-          {mainPane === "usage" ? <Suspense fallback={null}><UsagePage locale={locale} /></Suspense> : mainPane === "kanban" ? (
+          {mainPane === "usage" || mainPane === "plugin-marketplace" ? <Suspense fallback={null}><LocalToolsPage pane={mainPane} locale={locale} projectPath={effectiveProjectPath} cliFound={cliInfo.found} /></Suspense> : mainPane === "kanban" ? (
             <Suspense fallback={null}>
               <KanbanBoardPage
                 locale={locale}

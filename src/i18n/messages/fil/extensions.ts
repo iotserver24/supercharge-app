@@ -1,5 +1,8 @@
 /** fil messages — domain: extensions */
 export const filExtensions = {
+  "localMarketplace.title": "Pamilihan ng plugin",
+  "localMarketplace.subtitle": "Tumuklas ng mga plugin para sa lokal mong agent. Mag-install mula sa mga source ng pamilihan, at pamahalaan ang mga plugin, MCP server, at skill sa device na ito. Walang naka-link sa cloud VM.",
+  "localMarketplace.manage": "Pamahalaan ang mga naka-install na plugin",
   "mcpModal.title": "Mga MCP server",
   "mcpModal.hint": "Mga server na natuklasan ng Supercharge CLI (inspect). I-enable o i-disable sila sa Mga setting → Mga extension; i-i-inject ang mga naka-enable na server sa mga bagong session ng agent.",
   "mcpModal.loading": "Nilo-load ang mga MCP server…",

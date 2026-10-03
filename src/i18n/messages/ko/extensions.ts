@@ -1,5 +1,8 @@
 /** ko messages — domain: extensions */
 export const koExtensions = {
+  "localMarketplace.title": "플러그인 마켓플레이스",
+  "localMarketplace.subtitle": "로컬 에이전트용 플러그인을 찾아보세요. 마켓플레이스 소스에서 설치하고 이 기기에서 플러그인, MCP 서버, 스킬을 관리하세요. 클라우드 VM과 연결되지 않습니다.",
+  "localMarketplace.manage": "설치된 플러그인 관리",
   "mcpModal.title": "MCP 서버",
   "mcpModal.hint": "Supercharge CLI(inspect)가 발견한 서버입니다. 설정 → 확장에서 켜거나 끄세요. 켜진 서버는 새 에이전트 세션에 주입됩니다.",
   "mcpModal.loading": "MCP 서버 불러오는 중…",

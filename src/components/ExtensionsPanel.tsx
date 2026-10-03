@@ -11,6 +11,7 @@ import { ExtensionsPanelSkillModals } from "@/components/ExtensionsPanelSkillMod
 import { ExtensionsPanelPluginsModals } from "@/components/ExtensionsPanelPluginsModals";
 import { ExtensionsPanelMcpModals } from "@/components/ExtensionsPanelMcpModals";
 import { PluginApiPanel } from "@/components/PluginApiPanel";
+import { PluginMarketplaceCatalogStatus } from "@/components/PluginMarketplaceCatalogStatus";
 import {
   IconDoctor,
   IconEdit,
@@ -175,6 +176,7 @@ export type ExtensionsTabId =
 
 export interface ExtensionsPanelProps {
   locale: Locale;
+  presentation?: "settings" | "marketplace";
   /** Active workbench project path (inspect cwd — not shown in toolbar). */
   projectPath?: string | null;
   /** Whether CLI probe found a binary (for empty-state copy). */
@@ -195,6 +197,7 @@ export interface ExtensionsPanelProps {
 
 export function ExtensionsPanel({
   locale,
+  presentation = "settings",
   projectPath = null,
   cliFound = true,
   activeTab = "plugins",
@@ -279,7 +282,8 @@ export function ExtensionsPanel({
   const [pathInstallError, setPathInstallError] = useState<string | null>(null);
   const [pathValidate, setPathValidate] =
     useState<PluginValidatePresentation | null>(null);
-  /** Confirm before `plugin install --trust` from the path-install modal. */
+  const [installConfirmFromPath, setInstallConfirmFromPath] = useState(false);
+  /** Confirm before `plugin install --trust` from catalog or path. */
   const [installConfirmSource, setInstallConfirmSource] = useState<
     string | null
   >(null);
@@ -364,6 +368,7 @@ export function ExtensionsPanel({
     [],
   );
   const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogSourceCount, setCatalogSourceCount] = useState(0);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [catalogPage, setCatalogPage] = useState(1);
   /** Category keys expanded past the 7+more collapse tile. */
@@ -505,7 +510,7 @@ export function ExtensionsPanel({
       setCatalogLoading(true);
       setCatalogError(null);
       try {
-        await ensureDefaultMarketplaces({
+        const ensured = await ensureDefaultMarketplaces({
           list: async () => {
             const r = await api.marketplaceList();
             return (r.sources ?? []).map((s: Record<string, unknown>) => ({
@@ -522,13 +527,15 @@ export function ExtensionsPanel({
             }));
           },
           add: async (url) => {
-            await api.marketplaceAdd(url);
+            const result = await api.marketplaceAdd(url);
+            if (!result.ok) throw new Error(result.error || tr("ext.market.error"));
           },
           remove: async (nameOrUrl) => {
             await api.marketplaceRemove(nameOrUrl);
           },
-          removeClaude: true,
+          removeClaude: presentation !== "marketplace",
         });
+        force ||= ensured.added.length > 0 || ensured.removed.length > 0;
         if (force) invalidateMarketplaceCatalogCache();
 
         const result = await loadMarketplaceCatalog(async () => {
@@ -592,7 +599,7 @@ export function ExtensionsPanel({
           let available = sortAvailablePluginsByName(
             filterAvailablePlugins(mapped),
           );
-          available = filterCatalogToDefaultSources(available, sources);
+          if (presentation !== "marketplace") available = filterCatalogToDefaultSources(available, sources);
           available = dedupeAvailablePluginsByName(available);
           return {
             sources,
@@ -601,8 +608,9 @@ export function ExtensionsPanel({
           };
         }, { force });
 
+        setCatalogSourceCount(result.sources.length);
         setCatalogPlugins(dedupeAvailablePluginsByName(result.available));
-        setCatalogError(result.error);
+        setCatalogError([result.error, ...ensured.errors].filter(Boolean).join("; ") || null);
         if (!force) setCatalogPage(1);
 
         // Enrich logos / display names from marketplace-cache plugin.json
@@ -655,7 +663,7 @@ export function ExtensionsPanel({
         setCatalogLoading(false);
       }
     },
-    [cliFound],
+    [cliFound, presentation, tr],
   );
 
   const refresh = useCallback(async (opts?: { forcePlugins?: boolean }) => {
@@ -724,14 +732,18 @@ export function ExtensionsPanel({
   }, [enrichPluginCards, projectPath, tr]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    void refresh({ forcePlugins: presentation === "marketplace" });
+    if (presentation !== "marketplace") return;
+    const onFocus = () => { void refresh({ forcePlugins: true }); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refresh, presentation]);
 
   // Load discover catalog when plugins tab is shown (cached when possible).
   useEffect(() => {
     if (resolveExtensionsTabId(activeTab) !== "plugins") return;
-    void loadCatalog(false);
-  }, [activeTab, loadCatalog]);
+    void loadCatalog(presentation === "marketplace");
+  }, [activeTab, loadCatalog, presentation]);
 
   useEffect(() => {
     setCatalogPage(1);
@@ -743,7 +755,7 @@ export function ExtensionsPanel({
     [skillsError, mcpError, pluginsError],
   );
   const cliMissing =
-    !cliFound ||
+    !api.isTauri() || !cliFound ||
     isCliMissingError(skillsError) ||
     isCliMissingError(mcpError) ||
     isCliMissingError(pluginsError);
@@ -1229,7 +1241,7 @@ export function ExtensionsPanel({
     setActionError(null);
     setActionErrorSource(null);
     try {
-      await action();
+      const result = await action();
       if (opts?.soft) {
         // Enable/disable: trust patch + local state (no full CLI list).
         setPlugins((prev) =>
@@ -1247,6 +1259,9 @@ export function ExtensionsPanel({
       } else {
         invalidatePluginsListCache();
         await refresh({ forcePlugins: true });
+      }
+      if (result && typeof result === "object" && "message" in result && typeof result.message === "string") {
+        setPathHint(result.message || null);
       }
       requestPluginHostRefresh();
     } catch (e) {
@@ -1359,6 +1374,7 @@ export function ExtensionsPanel({
     }
     setPathInstallError(null);
     setPathInstallOpen(false);
+    setInstallConfirmFromPath(true);
     setInstallConfirmSource(source);
   };
 
@@ -1366,11 +1382,15 @@ export function ExtensionsPanel({
     const source = installConfirmSource;
     if (!source || actionBusy) return;
     setInstallConfirmSource(null);
-    await runPluginAction("install", async () => {
-      await api.pluginInstall(source);
+    await runPluginAction(installConfirmFromPath ? "install" : `inst:${source}`, async () => {
+      const result = await api.pluginInstall(source);
+      if (!result.ok) throw new Error(result.message || tr("ext.plugins.actionError"));
+      invalidateMarketplaceCatalogCache();
+      await loadCatalog(true);
       setInstallSource("");
       setPathValidate(null);
       setPathInstallError(null);
+      return result;
     });
   };
 
@@ -1668,27 +1688,32 @@ export function ExtensionsPanel({
   const showTabSearch =
     tab === "plugins" || tab === "mcp" || tab === "skills";
 
+  const showChatcutRecommended = !chatcutInstalled && filterText([
+    tr("ext.plugins.recommended.chatcutName"), tr("ext.plugins.recommended.chatcutDesc"),
+  ]);
+  const showXApiRecommended = !xApiInstalled && filterText([
+    tr("ext.plugins.recommended.xApiName"), tr("ext.plugins.recommended.xApiDesc"),
+  ]);
+
   const installRecommended = async (kind: "chatcut" | "x-api") => {
     if (!api.isTauri() || actionBusy || cliMissing) return;
     setRecommendedInstall(null);
     const source =
       kind === "x-api" ? X_API_INSTALL_SOURCE : CHATCUT_CODEX_INSTALL_SOURCE;
     await runPluginAction(`install:${kind}`, async () => {
-      await api.pluginInstall(source);
+      const result = await api.pluginInstall(source);
+      if (!result.ok) throw new Error(result.message || tr("ext.plugins.actionError"));
+      invalidateMarketplaceCatalogCache();
+      await loadCatalog(true);
+      return result;
     });
   };
 
-  const installAvailableDirect = async (target: AvailablePluginLike) => {
+  const requestCatalogInstall = async (target: AvailablePluginLike) => {
     if (!api.isTauri() || actionBusy || cliMissing) return;
-    const source = marketplaceQualifiedInstallSource(
-      target.name,
-      target.marketplace,
-    );
-    await runPluginAction(`inst:${target.name}`, async () => {
-      await api.pluginInstall(source);
-      invalidateMarketplaceCatalogCache();
-      void loadCatalog(true);
-    });
+    setDetailCard(null);
+    setInstallConfirmFromPath(false);
+    setInstallConfirmSource(marketplaceQualifiedInstallSource(target.name, target.marketplace));
   };
 
   const installedNameSet = useMemo(
@@ -1790,7 +1815,18 @@ export function ExtensionsPanel({
 
   return (
     <div className="ext-panel ext-ref-shell" data-testid="extensions-panel">
-      <p className="settings-page__lead">{tr("ext.lead")}</p>
+      {presentation === "settings" ? <p className="settings-page__lead">{tr("ext.lead")}</p> : (
+        <input
+          type="search"
+          className="settings-input plugin-marketplace-page__search"
+          value={extQuery}
+          placeholder={tr("ext.search.plugins")}
+          aria-label={tr("ext.search.plugins")}
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(e) => setExtQuery(e.target.value)}
+        />
+      )}
 
       {onTabChange ? (
         <div
@@ -2056,7 +2092,7 @@ export function ExtensionsPanel({
         </section>
 
         {/* Recommended plugins if missing — never auto-install */}
-        {!chatcutInstalled || !xApiInstalled ? (
+        {showChatcutRecommended || showXApiRecommended ? (
           <section
             className="ext-ref-block"
             id="settings-anchor-ext-plugins-recommended"
@@ -2065,7 +2101,7 @@ export function ExtensionsPanel({
               {tr("ext.plugins.recommendedTitle")}
             </div>
             <ul className="ext-ref-featured">
-              {!chatcutInstalled ? (
+              {showChatcutRecommended ? (
                 <li className="ext-ref-featured__item">
                   <div className="ext-ref-featured__icon" aria-hidden>
                     <IconPuzzle size={18} />
@@ -2092,7 +2128,7 @@ export function ExtensionsPanel({
                   </div>
                 </li>
               ) : null}
-              {!xApiInstalled ? (
+              {showXApiRecommended ? (
                 <li className="ext-ref-featured__item">
                   <div className="ext-ref-featured__icon" aria-hidden>
                     <IconPlug size={18} />
@@ -2154,13 +2190,14 @@ export function ExtensionsPanel({
               </button>
               <button
                 type="button"
-                className="ext-ref-icon-btn"
+                className={presentation === "marketplace" ? "btn btn--ghost btn--sm" : "ext-ref-icon-btn"}
                 disabled={cliMissing}
                 onClick={() => setSourcesModalOpen(true)}
                 title={tr("ext.plugins.sourcesAndInstall")}
                 aria-label={tr("ext.plugins.sourcesAndInstall")}
               >
                 <IconSettings size={16} />
+                {presentation === "marketplace" ? <span>{tr("ext.plugins.sourcesAndInstall")}</span> : null}
               </button>
               <button
                 type="button"
@@ -2175,30 +2212,22 @@ export function ExtensionsPanel({
               </button>
             </span>
           </div>
-          {catalogError ? (
-            <div className="ext-alert ext-alert--warn" role="status">
-              <p className="ext-alert__body">{catalogError}</p>
-              <button
-                type="button"
-                className="btn btn--ghost btn--sm"
-                onClick={() => void loadCatalog(true)}
-              >
-                {tr("ext.market.retry")}
-              </button>
-            </div>
-          ) : null}
-          {catalogLoading && catalogPlugins.length === 0 ? (
-            <p className="ext-ref-empty">{tr("ext.market.availableLoading")}</p>
-          ) : null}
-          {!catalogLoading && discoverCards.length === 0 && !catalogError ? (
-            <p className="ext-ref-empty">
-              {cliMissing
-                ? tr("ext.market.emptyCli")
-                : extQuery.trim()
-                  ? tr("ext.market.availableEmpty")
-                  : tr("ext.market.emptyCatalog")}
-            </p>
-          ) : null}
+          <PluginMarketplaceCatalogStatus
+            locale={locale}
+            input={{
+              loading: catalogLoading,
+              cliFound: !cliMissing,
+              error: catalogError,
+              sourceCount: catalogSourceCount,
+              availableCount: catalogPlugins.length,
+              visibleCount: discoverCards.length,
+              query: extQuery,
+              marketFilter: "__all__",
+            }}
+            onRetry={() => void loadCatalog(true)}
+            onClear={() => setExtQuery("")}
+            onOpenRuntime={onOpenRuntime}
+          />
           {catalogVisibleCount > 0 ? (
             <div className="ext-ref-cat-stack">
               {discoverGroups.map((group) => {
@@ -2231,7 +2260,7 @@ export function ExtensionsPanel({
                           (p) => p.name.trim().toLowerCase() === nameKey,
                         ) ?? null;
                       const busy =
-                        actionBusy === `inst:${c.name}` ||
+                        actionBusy === `inst:${marketplaceQualifiedInstallSource(c.name, c.marketplace)}` ||
                         actionBusy === `install:chatcut`;
                       const installed = c.installed;
                       const meta = metaByName.get(nameKey);
@@ -2263,6 +2292,7 @@ export function ExtensionsPanel({
                             setDetailRawInstalled(installedDto);
                           }}
                           onKeyDown={(e) => {
+                            if (e.target !== e.currentTarget) return;
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
                               setDetailCard({
@@ -2341,7 +2371,7 @@ export function ExtensionsPanel({
                                   busy || !!actionBusy || cliMissing || !raw
                                 }
                                 onClick={() => {
-                                  if (raw) void installAvailableDirect(raw);
+                                  if (raw) void requestCatalogInstall(raw);
                                 }}
                               >
                                 {busy
@@ -2948,7 +2978,7 @@ export function ExtensionsPanel({
         recommendedInstall={recommendedInstall}
         setRecommendedInstall={setRecommendedInstall}
         installRecommended={installRecommended}
-        installAvailableDirect={installAvailableDirect}
+        requestCatalogInstall={requestCatalogInstall}
         installSource={installSource}
         pathInstallOpen={pathInstallOpen}
         setPathInstallOpen={setPathInstallOpen}
@@ -2963,6 +2993,7 @@ export function ExtensionsPanel({
         validatePathInstall={validatePathInstall}
         requestPathInstall={requestPathInstall}
         installConfirmSource={installConfirmSource}
+        installConfirmFromPath={installConfirmFromPath}
         setInstallConfirmSource={setInstallConfirmSource}
         confirmPathInstall={confirmPathInstall}
         detailCard={detailCard}
@@ -2988,7 +3019,11 @@ export function ExtensionsPanel({
         setUninstallTarget={setUninstallTarget}
         confirmUninstall={confirmUninstall}
         sourcesModalOpen={sourcesModalOpen}
-        setSourcesModalOpen={setSourcesModalOpen}
+        preserveUserSources={presentation === "marketplace"}
+        setSourcesModalOpen={(open) => {
+          setSourcesModalOpen(open);
+          if (!open) void loadCatalog(true);
+        }}
         validateModal={validateModal}
         setValidateModal={setValidateModal}
         pluginValidateKindLabels={pluginValidateKindLabels}

@@ -1,5 +1,8 @@
 /** English messages — domain: extensions */
 export const enExtensions = {
+  "localMarketplace.title": "Plugin Marketplace",
+  "localMarketplace.subtitle": "Discover plugins for your local agent. Install from marketplace sources, then manage plugins, MCP servers, and skills on this device. Nothing is linked to a cloud VM.",
+  "localMarketplace.manage": "Manage installed plugins",
   "mcpModal.title": "MCP servers",
   "mcpModal.hint": "Servers discovered by Supercharge CLI (inspect). Enable or disable them under Settings → Extensions; enabled servers inject into new agent sessions.",
   "mcpModal.loading": "Loading MCP servers…",

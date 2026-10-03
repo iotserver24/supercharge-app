@@ -109,6 +109,7 @@ export type ExtensionsBuildExtrasProps = {
   embedded?: boolean;
   /** Sources management only (modal) — hide available catalog list. */
   sourcesOnly?: boolean;
+  preserveUserSources?: boolean;
   /** Soft-fail ensure openai/plugins error bubble (optional parent display). */
   onEnsureOpenaiError?: (message: string | null) => void;
   /** After plugin install — parent can refresh plugins list. */
@@ -197,6 +198,7 @@ export function ExtensionsBuildExtras({
   mode = "all",
   embedded = false,
   sourcesOnly = false,
+  preserveUserSources = false,
   onEnsureOpenaiError,
   onPluginsChanged,
   onOpenRuntime,
@@ -479,12 +481,13 @@ export function ExtensionsBuildExtras({
             }));
         },
         add: async (url) => {
-          await api.marketplaceAdd(url);
+          const result = await api.marketplaceAdd(url);
+          if (!result.ok) throw new Error(result.error || tr("ext.market.error"));
         },
         remove: async (nameOrUrl) => {
           await api.marketplaceRemove(nameOrUrl);
         },
-        removeClaude: true,
+        removeClaude: !preserveUserSources,
       });
       const ensureErr =
         ensure.errors.length > 0 ? ensure.errors.join("; ") : null;
@@ -508,10 +511,10 @@ export function ExtensionsBuildExtras({
             // Keep only default-allowed sources in the UI list.
             .filter(
               (s) =>
-                isDefaultAllowedMarketplaceSource(s) ||
+                preserveUserSources || isDefaultAllowedMarketplaceSource(s) ||
                 !isClaudeMarketplaceSource(s),
             )
-            .filter((s) => !isClaudeMarketplaceSource(s)),
+            .filter((s) => preserveUserSources || !isClaudeMarketplaceSource(s)),
         );
         let avail = sortAvailablePluginsByName(
           filterAvailablePlugins(
@@ -520,13 +523,13 @@ export function ExtensionsBuildExtras({
               .filter((x): x is AvailablePluginLike => !!x),
           ),
         );
-        avail = filterCatalogToDefaultSources(avail, src);
+        if (!preserveUserSources) avail = filterCatalogToDefaultSources(avail, src);
         return { sources: src, available: avail, error: err };
       }, { force: force || ensure.added.length > 0 || ensure.removed.length > 0 });
 
-      setSources(result.sources.filter((s) => !isClaudeMarketplaceSource(s)));
+      setSources(result.sources.filter((s) => preserveUserSources || !isClaudeMarketplaceSource(s)));
       setAvailable(
-        filterCatalogToDefaultSources(result.available, result.sources),
+        preserveUserSources ? result.available : filterCatalogToDefaultSources(result.available, result.sources),
       );
       setFromCache(result.fromCache);
       // Soft-fail capability gaps are presented via empty-state, not only a banner.
@@ -546,7 +549,7 @@ export function ExtensionsBuildExtras({
     } finally {
       setMarketLoading(false);
     }
-  }, [cliMissing, onEnsureOpenaiError]);
+  }, [cliMissing, onEnsureOpenaiError, preserveUserSources, tr]);
 
   useEffect(() => {
     if (showHooks) void loadHooks();

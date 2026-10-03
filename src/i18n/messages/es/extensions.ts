@@ -1,5 +1,8 @@
 /** es messages — domain: extensions */
 export const esExtensions = {
+  "localMarketplace.title": "Mercado de plugins",
+  "localMarketplace.subtitle": "Descubre plugins para tu agente local. Instálalos desde fuentes del mercado y administra plugins, servidores MCP y habilidades en este dispositivo. No se vincula nada a una máquina virtual en la nube.",
+  "localMarketplace.manage": "Administrar plugins instalados",
   "mcpModal.title": "Servidores MCP",
   "mcpModal.hint": "Servidores descubiertos por Supercharge CLI (inspect). Actívalos o desactívalos en Ajustes → Extensiones; los servidores activos se inyectan en las sesiones nuevas del agente.",
   "mcpModal.loading": "Cargando servidores MCP…",

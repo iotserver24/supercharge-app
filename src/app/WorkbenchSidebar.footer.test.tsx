@@ -106,6 +106,16 @@ it("shows local identity and opens the footer menu", () => {
   expect(setShowUserMenu).toHaveBeenCalled();
 });
 
+it("opens the standalone local marketplace and marks its navigation item active", () => {
+  const setShowUserMenu = vi.fn();
+  render(<WorkbenchSidebar {...props({ mainPane: "plugin-marketplace", setShowUserMenu })} />);
+  const marketplace = screen.getByRole("button", { name: "Plugin Marketplace" });
+  expect(marketplace.getAttribute("aria-current")).toBe("page");
+  fireEvent.click(marketplace);
+  expect(window.location.hash).toBe("#/plugin-marketplace");
+  expect(setShowUserMenu).toHaveBeenCalledWith(false);
+});
+
 it("preserves the exact sidebar subtitle", () => {
   render(<WorkbenchSidebar {...props()} />);
   expect(screen.getByText("building beyond limits")).toBeTruthy();

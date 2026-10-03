@@ -12,7 +12,7 @@ import { parsePrHubDeepLink } from "@/lib/prHubDeepLink";
 import { parsePluginHash } from "@/lib/pluginHost/hash";
 import type { PluginRoute } from "@/lib/pluginHost/types";
 
-export type WorkbenchHashPane = "chat" | "automations" | "kanban" | "usage" | "plugin";
+export type WorkbenchHashPane = "chat" | "automations" | "kanban" | "usage" | "plugin-marketplace" | "plugin";
 
 export type WorkbenchHashRoute =
   | {
@@ -46,6 +46,9 @@ export function resolveWorkbenchHash(
       };
     }
     return { kind: "settings-last" };
+  }
+  if (raw === "plugin-marketplace" || raw.startsWith("plugin-marketplace?")) {
+    return { kind: "pane", pane: "plugin-marketplace" };
   }
   const pluginRoute = parsePluginHash(fullHash ?? "");
   if (pluginRoute) {

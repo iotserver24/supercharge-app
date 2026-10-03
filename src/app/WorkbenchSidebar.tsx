@@ -26,6 +26,7 @@ import {
   IconList,
   IconSettings,
   IconNewChat,
+  IconPuzzle,
   IconScheduled,
   IconSearch,
 } from "@/components/icons";
@@ -112,7 +113,7 @@ export type WorkbenchSidebarProps = {
   replaceProviderBrandLogo: boolean;
   customRouteActive: boolean;
   activeCustomProvider: CustomProvider | null;
-  mainPane: "chat" | "automations" | "kanban" | "usage" | "plugin";
+  mainPane: "chat" | "automations" | "kanban" | "usage" | "plugin-marketplace" | "plugin";
   pluginRoute?: PluginRoute | null;
   onNavigatePlugin?: (route: PluginRoute) => void;
   isSecondaryWindow?: boolean;
@@ -364,6 +365,18 @@ export function WorkbenchSidebar(props: WorkbenchSidebarProps) {
               <IconList size={16} />
             </span>
             {tr("sidebar.kanban")}
+          </button>
+          <button
+            type="button"
+            className={"nav-item" + (mainPane === "plugin-marketplace" ? " nav-item--active" : "")}
+            aria-current={mainPane === "plugin-marketplace" ? "page" : undefined}
+            onClick={() => {
+              setShowUserMenu(false);
+              window.location.hash = "#/plugin-marketplace";
+            }}
+          >
+            <span className="nav-item__icon"><IconPuzzle size={16} /></span>
+            {tr("localMarketplace.title")}
           </button>
           {isDesktopHost() && REMOTE_CONTROL_ENABLED ? (
             <button

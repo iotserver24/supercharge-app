@@ -1,5 +1,8 @@
 /** de messages — domain: extensions */
 export const deExtensions = {
+  "localMarketplace.title": "Plugin-Marktplatz",
+  "localMarketplace.subtitle": "Entdecke Plugins für deinen lokalen Agenten. Installiere sie aus Marktplatzquellen und verwalte Plugins, MCP-Server und Skills auf diesem Gerät. Es besteht keine Verbindung zu einer Cloud-VM.",
+  "localMarketplace.manage": "Installierte Plugins verwalten",
   "mcpModal.title": "MCP-Server",
   "mcpModal.hint": "Von Supercharge CLI (inspect) entdeckte Server. Unter Einstellungen → Erweiterungen ein- oder ausschalten; aktivierte Server werden in neue Agentensitzungen injiziert.",
   "mcpModal.loading": "MCP-Server werden geladen…",

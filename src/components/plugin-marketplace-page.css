@@ -1,0 +1,95 @@
+.plugin-marketplace-page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-color: var(--text-tertiary) transparent;
+  scrollbar-width: thin;
+  container-type: inline-size;
+}
+
+.plugin-marketplace-page__content {
+  width: min(100%, 1100px);
+  margin: 0 auto;
+  padding: 24px 32px 48px;
+  box-sizing: border-box;
+}
+
+.plugin-marketplace-page__header {
+  margin: 28px 0 24px;
+}
+
+.plugin-marketplace-page__header h2 {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.plugin-marketplace-page__header p {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.plugin-marketplace-page__management {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.plugin-marketplace-page .plugin-marketplace-page__search {
+  width: 100%;
+  min-height: 40px;
+  margin-bottom: 20px;
+  caret-color: var(--text-primary);
+}
+
+.plugin-marketplace-page .settings-input::placeholder,
+.plugin-marketplace-page .ext-ref-featured__desc {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+.plugin-marketplace-page .ext-panel__surface {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.plugin-marketplace-page .ext-ref-plugins-scroll {
+  gap: 28px;
+}
+
+.plugin-marketplace-page .ext-ref-featured__item.is-off {
+  opacity: 1;
+}
+
+.plugin-marketplace-page :is(button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 3px;
+}
+
+.plugin-marketplace-page ::selection {
+  background: var(--text-primary);
+  color: var(--bg-main);
+}
+
+.plugin-marketplace-page .ext-ref-featured__desc {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+@container (max-width: 720px) {
+  .plugin-marketplace-page__content { padding: 16px 20px 32px; }
+  .plugin-marketplace-page .ext-ref-featured { grid-template-columns: 1fr; }
+}

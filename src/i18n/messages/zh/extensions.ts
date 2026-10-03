@@ -1,5 +1,8 @@
 /** Simplified Chinese messages — domain: extensions */
 export const zhExtensions = {
+  "localMarketplace.title": "插件市场",
+  "localMarketplace.subtitle": "为本地智能体发现插件。从市场源安装，并在此设备上管理插件、MCP 服务器和技能。不会关联云端虚拟机。",
+  "localMarketplace.manage": "管理已安装插件",
   "mcpModal.title": "MCP 服务器",
   "mcpModal.hint": "由 Supercharge CLI inspect 发现的服务器。可在「设置 → 扩展」中启用/禁用；已启用的服务器会注入新会话。",
   "mcpModal.loading": "正在加载 MCP…",

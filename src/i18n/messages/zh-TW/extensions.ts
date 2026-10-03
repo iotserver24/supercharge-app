@@ -1,5 +1,8 @@
 /** Traditional Chinese messages — domain: extensions */
 export const zhTWExtensions = {
+  "localMarketplace.title": "外掛市集",
+  "localMarketplace.subtitle": "為本機代理探索外掛。從市集來源安裝，並在此裝置上管理外掛、MCP 伺服器和技能。不會連結雲端虛擬機器。",
+  "localMarketplace.manage": "管理已安裝外掛",
   "mcpModal.title": "MCP 伺服器",
   "mcpModal.hint": "由 Supercharge CLI inspect 發現的伺服器。可在「設定 → 擴充」中啟用/停用；已啟用的伺服器會注入新對話。",
   "mcpModal.loading": "正在載入 MCP…",

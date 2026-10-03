@@ -1,5 +1,8 @@
 /** id messages — domain: extensions */
 export const idExtensions = {
+  "localMarketplace.title": "Marketplace Plugin",
+  "localMarketplace.subtitle": "Temukan plugin untuk agen lokal Anda. Instal dari sumber marketplace, lalu kelola plugin, server MCP, dan skill di perangkat ini. Tidak ada yang ditautkan ke VM cloud.",
+  "localMarketplace.manage": "Kelola plugin terinstal",
   "mcpModal.title": "Server MCP",
   "mcpModal.hint": "Server yang ditemukan Supercharge CLI (inspect). Aktifkan atau nonaktifkan di Pengaturan → Ekstensi; server yang aktif disuntikkan ke sesi agen baru.",
   "mcpModal.loading": "Memuat server MCP…",

@@ -42,7 +42,7 @@ export type ExtensionsPanelPluginsModalsProps = {
   recommendedInstall: "chatcut" | "x-api" | null;
   setRecommendedInstall: (v: "chatcut" | "x-api" | null) => void;
   installRecommended: (kind: "chatcut" | "x-api") => Promise<void>;
-  installAvailableDirect: (target: AvailablePluginLike) => Promise<void>;
+  requestCatalogInstall: (target: AvailablePluginLike) => Promise<void>;
   installSource: string;
   pathInstallOpen: boolean;
   setPathInstallOpen: (v: boolean) => void;
@@ -57,6 +57,7 @@ export type ExtensionsPanelPluginsModalsProps = {
   validatePathInstall: () => Promise<void>;
   requestPathInstall: () => void;
   installConfirmSource: string | null;
+  installConfirmFromPath: boolean;
   setInstallConfirmSource: (v: string | null) => void;
   confirmPathInstall: () => Promise<void>;
   detailCard: PluginCardModel | null;
@@ -97,6 +98,7 @@ export type ExtensionsPanelPluginsModalsProps = {
   setUninstallTarget: (v: api.PluginDto | null) => void;
   confirmUninstall: () => Promise<void>;
   sourcesModalOpen: boolean;
+  preserveUserSources?: boolean;
   setSourcesModalOpen: (v: boolean) => void;
   validateModal: {
     open: boolean;
@@ -150,7 +152,7 @@ export function ExtensionsPanelPluginsModals(p: ExtensionsPanelPluginsModalsProp
     recommendedInstall,
     setRecommendedInstall,
     installRecommended,
-    installAvailableDirect,
+    requestCatalogInstall,
     installSource,
     pathInstallOpen,
     setPathInstallOpen,
@@ -311,7 +313,7 @@ export function ExtensionsPanelPluginsModals(p: ExtensionsPanelPluginsModalsProp
         onClose={() => {
           if (actionBusy === "install") return;
           setInstallConfirmSource(null);
-          setPathInstallOpen(true);
+          if (p.installConfirmFromPath) setPathInstallOpen(true);
         }}
         title={tr("ext.plugins.installConfirmTitle")}
         size="sm"
@@ -324,7 +326,7 @@ export function ExtensionsPanelPluginsModals(p: ExtensionsPanelPluginsModalsProp
               disabled={actionBusy === "install"}
               onClick={() => {
                 setInstallConfirmSource(null);
-                setPathInstallOpen(true);
+                if (p.installConfirmFromPath) setPathInstallOpen(true);
               }}
             >
               {tr("common.cancel")}
@@ -387,7 +389,7 @@ export function ExtensionsPanelPluginsModals(p: ExtensionsPanelPluginsModalsProp
                   const t = detailRawAvailable;
                   setDetailCard(null);
                   setDetailRawAvailable(null);
-                  void installAvailableDirect(t);
+                  void requestCatalogInstall(t);
                 }}
               >
                 {actionBusy === `inst:${detailRawAvailable.name}`
@@ -622,6 +624,7 @@ export function ExtensionsPanelPluginsModals(p: ExtensionsPanelPluginsModalsProp
             mode="market"
             embedded
             sourcesOnly
+            preserveUserSources={p.preserveUserSources}
             installedPlugins={plugins.map((p) => ({
               name: p.name,
               marketplace: p.marketplace,

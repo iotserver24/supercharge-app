@@ -1,5 +1,8 @@
 /** uk messages — domain: extensions */
 export const ukExtensions = {
+  "localMarketplace.title": "Маркетплейс плагінів",
+  "localMarketplace.subtitle": "Знайдіть плагіни для локального агента. Установлюйте їх із джерел маркетплейса та керуйте плагінами, серверами MCP і навичками на цьому пристрої. Зв’язку з хмарною віртуальною машиною немає.",
+  "localMarketplace.manage": "Керувати встановленими плагінами",
   "mcpModal.title": "Сервери MCP",
   "mcpModal.hint": "Сервери, виявлені Supercharge CLI (inspect). Увімкніть або вимкніть їх у Налаштування → Розширення; увімкнені сервери інжектуються в нові сесії агента.",
   "mcpModal.loading": "Завантаження серверів MCP…",

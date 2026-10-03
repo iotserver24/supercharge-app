@@ -1,5 +1,8 @@
 /** it messages — domain: extensions */
 export const itExtensions = {
+  "localMarketplace.title": "Marketplace dei plugin",
+  "localMarketplace.subtitle": "Scopri plugin per il tuo agente locale. Installali dalle fonti del marketplace, poi gestisci plugin, server MCP e competenze su questo dispositivo. Nessun collegamento a macchine virtuali cloud.",
+  "localMarketplace.manage": "Gestisci i plugin installati",
   "mcpModal.title": "Server MCP",
   "mcpModal.hint": "Server scoperti da Supercharge CLI (inspect). Abilitali o disabilitali in Impostazioni → Estensioni; i server abilitati vengono iniettati nelle nuove sessioni agente.",
   "mcpModal.loading": "Caricamento server MCP…",
